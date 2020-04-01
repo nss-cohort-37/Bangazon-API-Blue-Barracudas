@@ -72,5 +72,64 @@ namespace BangazonAPI.Controllers
                 }
             }
         }
+
+        //----------GET by Id----------
+        [HttpGet("{id}", Name = "GetEmployee")]
+        public async Task<IActionResult> Get([FromRoute] int id)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT e.Id, e.FirstName, e.LastName, e.DepartmentId, e.Email, e.IsSupervisor, e.ComputerId, c.Id, 
+                        c.PurchaseDate, c.DecomissionDate, c.Make, c.Model
+                        FROM Employee e
+                        INNER JOIN Computer c
+                        ON e.ComputerId = c.Id
+                        WHERE e.Id = @id";
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    Employee employee = null;
+
+                    if (reader.Read())
+                    {
+                        employee = new Employee()
+                        {
+
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
+                            LastName = reader.GetString(reader.GetOrdinal("LastName")),
+                            Email = reader.GetString(reader.GetOrdinal("Email")),
+                            DepartmentId = reader.GetInt32(reader.GetOrdinal("DepartmentId")),
+                            IsSupervisor = reader.GetBoolean(reader.GetOrdinal("IsSupervisor")),
+                            ComputerId = reader.GetInt32(reader.GetOrdinal("ComputerId")),
+                            computer = new Computer()
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("ComputerId")),
+                                Make = reader.GetString(reader.GetOrdinal("Make")),
+                                Model = reader.GetString(reader.GetOrdinal("Model")),
+                                PurchaseDate = reader.GetDateTime(reader.GetOrdinal("PurchaseDate")),
+                            }
+
+                        };
+                            if(!reader.IsDBNull(reader.GetOrdinal("DecomissionDate")))
+                            {
+                                employee.computer.DecomissionDate = reader.GetDateTime(reader.GetOrdinal("DecomissionDate"));
+                            }
+
+                        reader.Close();
+
+                        return Ok(employee);
+                    }
+                    else
+                    {
+                        return NotFound();
+                    }
+                }
+            }
+        }
     }
 }
