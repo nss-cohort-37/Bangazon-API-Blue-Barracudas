@@ -31,7 +31,8 @@ namespace BangazonAPI.Controllers
         // ----------Get all----------
         [HttpGet]
         public async Task<IActionResult> Get(
-            [FromQuery] string firstName)
+            [FromQuery] string firstName,
+            [FromQuery] string lastName)
         {
             using (SqlConnection conn = Connection)
             {
@@ -47,7 +48,13 @@ namespace BangazonAPI.Controllers
                     {
                         cmd.CommandText += " AND FirstName LIKE @firstName";
                         cmd.Parameters.Add(new SqlParameter("@firstName", "%" + firstName + "%"));
-                    }
+                    };
+
+                    if (lastName != null)
+                    {
+                        cmd.CommandText += " AND LastName LIKE @lastName";
+                        cmd.Parameters.Add(new SqlParameter("@lastName", "%" + lastName + "%"));
+                    };
 
 
                     SqlDataReader reader = cmd.ExecuteReader();
