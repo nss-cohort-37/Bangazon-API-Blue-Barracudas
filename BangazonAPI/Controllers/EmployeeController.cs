@@ -158,6 +158,7 @@ namespace BangazonAPI.Controllers
                         INSERT INTO Employee (FirstName, LastName, DepartmentId, Email, IsSupervisor, ComputerId)
                         OUTPUT INSERTED.Id
                         VALUES (@FirstName, @LastName, @DepartmentId, @Email, @IsSupervisor, @ComputerId)";
+
                     cmd.Parameters.Add(new SqlParameter("@FirstName", employee.FirstName));
                     cmd.Parameters.Add(new SqlParameter("@LastName", employee.LastName));
                     cmd.Parameters.Add(new SqlParameter("@DepartmentId", employee.DepartmentId));
@@ -169,6 +170,72 @@ namespace BangazonAPI.Controllers
 
                     employee.Id = id;
                     return CreatedAtRoute("GetEmployee", new { id = id }, employee);
+                }
+            }
+        }
+
+        ////////----------PUT----------
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Put([FromRoute] int id, [FromBody] Employee employee)
+        {
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"UPDATE Employee
+                                     SET FirstName = @FirstName, LastName = @LastName, DepartmentId = @DepartmentId, Email = @Email, IsSupervisor = @IsSupervisor, ComputerId = @ComputerId 
+                                     WHERE Id = @id";
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+                        cmd.Parameters.Add(new SqlParameter("@FirstName", employee.FirstName));
+                        cmd.Parameters.Add(new SqlParameter("@LastName", employee.LastName));
+                        cmd.Parameters.Add(new SqlParameter("@DepartmentId", employee.DepartmentId));
+                        cmd.Parameters.Add(new SqlParameter("@Email", employee.Email));
+                        cmd.Parameters.Add(new SqlParameter("@IsSupervisor", employee.IsSupervisor));
+                        cmd.Parameters.Add(new SqlParameter("@ComputerId", employee.ComputerId));
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+                        }
+                        throw new Exception("No rows affected");
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                if (!EmployeeExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
+
+
+
+        private bool EmployeeExists(int id)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT Id, FirstName
+                        FROM Employee
+                        WHERE Id = @id";
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+                    return reader.Read();
                 }
             }
         }
