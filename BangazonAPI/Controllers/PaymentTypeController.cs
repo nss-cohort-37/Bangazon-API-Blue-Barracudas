@@ -127,6 +127,46 @@ namespace BangazonAPI.Controllers
             }
         }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Put([FromRoute] int id, [FromBody] PaymentType paymentType)
+        {
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"UPDATE PaymentType
+                                            SET Name = @Name,
+                                            Active = @Active
+                                            WHERE Id = @id";
+                        cmd.Parameters.Add(new SqlParameter("@Name", paymentType.Name));
+                        cmd.Parameters.Add(new SqlParameter("@Active", paymentType.Active));
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+                        }
+                        throw new Exception("No rows affected");
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                if (!PaymentTypeExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
         // This changes active to false, in essence soft deleting it from the DB
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete([FromRoute] int id)
