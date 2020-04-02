@@ -52,31 +52,83 @@ namespace BangazonAPI.Controllers
         //Get upcoming training programs           url: api/trainingPrograms            method: GET                       result: TrainingProgram Array
 
         [HttpGet]
-        public async Task<IActionResult> Get()
+        public async Task<IActionResult> Get(string q)
         {
             using (SqlConnection conn = Connection)
             {
                 conn.Open();
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT Id, Name, StartDate, EndDate, MaxAttendees FROM TrainingProgram";
+                    cmd.CommandText = @"
+                                        SELECT tp.Id, tp.Name, tp.MaxAttendees, tp.StartDate, tp.EndDate
+                                        FROM TrainingProgram tp 
+                                        WHERE tp.id LIKE @q";
+                    cmd.Parameters.Add(new SqlParameter("@q", "%" + q + "%"));
                     SqlDataReader reader = cmd.ExecuteReader();
                     List<TrainingProgram> trainingPrograms = new List<TrainingProgram>();
 
                     while (reader.Read())
                     {
-                        TrainingProgram trainingProgram = new TrainingProgram
+                        var trainingProgramId = reader.GetInt32(reader.GetOrdinal("Id"));
+                        var trainingProgramAlreadyAdded = trainingPrograms.FirstOrDefault(tprog => tprog.Id == trainingProgramId);
+
+                        if (trainingProgramAlreadyAdded == null)
+                        { 
+
+                            TrainingProgram trainingProgram = new TrainingProgram
                         {
                             Id = reader.GetInt32(reader.GetOrdinal("Id")),
                             Name = reader.GetString(reader.GetOrdinal("Name")),
                             StartDate = reader.GetDateTime(reader.GetOrdinal("StartDate")),
                             EndDate = reader.GetDateTime(reader.GetOrdinal("EndDate")),
-                            MaxAttendees = reader.GetInt32(reader.GetOrdinal("MaxAttendees"))
+                            MaxAttendees = reader.GetInt32(reader.GetOrdinal("MaxAttendees")),
+                            Employees = new List<Employee>()
+                          
                         };
 
                         trainingPrograms.Add(trainingProgram);
+                        
+                        var hasEmployees = !reader.IsDBNull(reader.GetOrdinal("Id"));
+                        if (hasEmployees)
+
+
+                            trainingProgram.Employees.Add(new Employee()
+                        {
+                                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
+                                LastName = reader.GetString(reader.GetOrdinal("LastName")),
+                                Email = reader.GetString(reader.GetOrdinal("Email")),
+                                IsSupervisor = reader.GetBoolean(reader.GetOrdinal("IsSupervisor"))
+                                //ComputerId = reader.GetInt32(reader.GetOrdinal("ComputerId")),
+                                //DepartmentId = reader.GetInt32(reader.GetOrdinal("DepartmentId")),
+                                //computer = new Computer(),
+                                //department = new Department()
+                            }
+
+                        );
+
+
                     }
-                    reader.Close();
+                    else
+
+                    {
+                        var hasEmployees = !reader.IsDBNull(reader.GetOrdinal("Id"));
+
+                        if (hasEmployees)
+                        {
+                            trainingProgramAlreadyAdded.Employees.Add(new Employee()
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
+                                LastName = reader.GetString(reader.GetOrdinal("LastName")),
+                                Email = reader.GetString(reader.GetOrdinal("Email")),
+                                IsSupervisor = reader.GetBoolean(reader.GetOrdinal("IsSupervisor"))
+                            });
+                        }
+
+                    }
+                }
+                reader.Close();
 
                     return Ok(trainingPrograms);
 
@@ -101,70 +153,41 @@ namespace BangazonAPI.Controllers
                                         INNER JOIN EmployeeTraining et ON tp.Id = et.TrainingProgramId 
                                         INNER JOIN Employee e ON e.Id = et.EmployeeId
                                         WHERE tp.id = @id";
-                    cmd.Parameters.Add(new SqlParameter("@id", id));
-                    SqlDataReader reader = cmd.ExecuteReader();
 
-                    List<TrainingProgram> trainingPrograms = new List<TrainingProgram>();
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+                    SqlDataReader reader = await cmd.ExecuteReaderAsync();
+                    TrainingProgram trainingProgram = null;
                     while (reader.Read())
                     {
-                        var trainingProgramId = reader.GetInt32(reader.GetOrdinal("Id"));
-                        var trainingProgramAlreadyAdded = trainingPrograms.FirstOrDefault(tprog => tprog.Id == trainingProgramId);
-
-                        if (trainingProgramAlreadyAdded == null)
+                        if (trainingProgram == null)
                         {
-
-                            TrainingProgram trainingProgram = new TrainingProgram
+                            trainingProgram = new TrainingProgram
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("Id")),
                                 Name = reader.GetString(reader.GetOrdinal("Name")),
                                 StartDate = reader.GetDateTime(reader.GetOrdinal("StartDate")),
                                 EndDate = reader.GetDateTime(reader.GetOrdinal("EndDate")),
                                 MaxAttendees = reader.GetInt32(reader.GetOrdinal("MaxAttendees")),
-                                Employees = new List<Employee>(),
+                                Employees = new List<Employee>()
                             };
-
-
-                            var hasEmployees = !reader.IsDBNull(reader.GetOrdinal("Id"));
-
-                            if (hasEmployees)
-                            {
-                                trainingProgram.Employees.Add(new Employee()
-                                {
-                                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                                    FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
-                                    LastName = reader.GetString(reader.GetOrdinal("LastName")),
-                                    Email = reader.GetString(reader.GetOrdinal("Email")),
-                                    IsSupervisor = reader.GetBoolean(reader.GetOrdinal("IsSupervisor"))
-                                });
-                            }
-                            trainingPrograms.Add(trainingProgram);
                         }
-                        else
 
+                        trainingProgram.Employees.Add(new Employee()
                         {
-                            var hasEmployees = !reader.IsDBNull(reader.GetOrdinal("Id"));
-
-                            if (hasEmployees)
-                            {
-                                trainingProgramAlreadyAdded.Employees.Add(new Employee()
-                                {
-                                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                                    FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
-                                    LastName = reader.GetString(reader.GetOrdinal("LastName")),
-                                    Email = reader.GetString(reader.GetOrdinal("Email")),
-                                    IsSupervisor = reader.GetBoolean(reader.GetOrdinal("IsSupervisor"))
-                                });
-                            }
-
-                        }
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
+                            LastName = reader.GetString(reader.GetOrdinal("LastName")),
+                            Email = reader.GetString(reader.GetOrdinal("Email")),
+                            IsSupervisor = reader.GetBoolean(reader.GetOrdinal("IsSupervisor"))
+                        });
                     }
                     reader.Close();
-                    return Ok(trainingPrograms);
+                    return Ok(trainingProgram);
                 }
             }
         }
     }
-    }
+}
 
 
 
