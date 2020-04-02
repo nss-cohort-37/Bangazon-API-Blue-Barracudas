@@ -118,6 +118,7 @@ namespace BangazonAPI.Controllers
                         {
                             computer.DecomissionDate = reader.GetDateTime(reader.GetOrdinal("DecomissionDate"));
                         }
+                       
                         reader.Close();
 
                         return Ok(computer);
@@ -141,12 +142,11 @@ namespace BangazonAPI.Controllers
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"
-                        INSERT INTO Computer (PurchaseDate, DecomissionDate, Make, Model, IsSupervisor, ComputerId)
+                        INSERT INTO Computer (PurchaseDate, Make, Model)
                         OUTPUT INSERTED.Id
-                        VALUES (@PurchaseDate, @DecomissionDate, @Make, @Model, @IsSupervisor, @ComputerId)";
+                        VALUES (@PurchaseDate,  @Make, @Model)";
 
-                    cmd.Parameters.Add(new SqlParameter("@PurchaseDate", DateTime.Now));
-                    cmd.Parameters.Add(new SqlParameter("@DecomissionDate", computer.DecomissionDate));
+                    cmd.Parameters.Add(new SqlParameter("@PurchaseDate", DateTime.Now.ToString("MM/dd/yyyy hh:mm tt")));
                     cmd.Parameters.Add(new SqlParameter("@Make", computer.Make));
                     cmd.Parameters.Add(new SqlParameter("@Model", computer.Model));
                   
