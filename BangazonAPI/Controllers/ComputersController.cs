@@ -13,10 +13,10 @@ namespace BangazonAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ComputerController : ControllerBase
+    public class ComputersController : ControllerBase
     {
         private readonly IConfiguration _config;
-        public ComputerController(IConfiguration config)
+        public ComputersController(IConfiguration config)
         {
             _config = config;
         }
@@ -30,20 +30,25 @@ namespace BangazonAPI.Controllers
 
         // ----------Get all----------
         [HttpGet]
+
+        // this turinary checks if the 'available' query param is being used and if it is 'true' or 'false'
         public async Task<IActionResult> Get(
             [FromQuery] string available
           )
         {
             if (available != "true" && available != "false")
             {
+                // if there are neither true or false being passed as a param, envoke the private method to get all computers
                 var computers = GetAllComputers(available);
                 return Ok(computers);
             } else if (available == "true")
             {
+                //if true - envoke the private method that gets only the unnassigned computers
                 var computers = GetAvailableComputers(available);
                 return Ok(computers);
             } else
             {
+                // if false - envoke the private method that gets only the assigned computers
                 var computers = GetUnavailableComputers(available);
                 return Ok(computers);
             }
@@ -61,8 +66,8 @@ namespace BangazonAPI.Controllers
                         FROM Computer c
                         LEFT JOIN Employee e
                         ON e.ComputerId = c.Id";
-              
-
+                    // left join on Employee where employee.computerId = the computer Id
+                    // so we have a reference to all computers that have an associated computer
 
                     SqlDataReader reader = cmd.ExecuteReader();
 
@@ -70,6 +75,7 @@ namespace BangazonAPI.Controllers
 
                     while (reader.Read())
                     {
+                        // checking if the column 'computerId' has no assosiated computer and then building a list of computers that have no employee
                         if (reader.IsDBNull(reader.GetOrdinal("ComputerId")))
                         {
 
@@ -86,8 +92,12 @@ namespace BangazonAPI.Controllers
                         {
                             computer.DecomissionDate = reader.GetDateTime(reader.GetOrdinal("DecomissionDate"));
                         }
+                        else
+                        {
+                            computer.DecomissionDate = null;
+                        }
 
-                        allComputers.Add(computer);
+                            allComputers.Add(computer);
                         }
                     }
                     reader.Close();
@@ -131,6 +141,10 @@ namespace BangazonAPI.Controllers
                         {
                             computer.DecomissionDate = reader.GetDateTime(reader.GetOrdinal("DecomissionDate"));
                         }
+                        else
+                        {
+                            computer.DecomissionDate = null;
+                        }
 
                         allComputers.Add(computer);
                     }
@@ -172,8 +186,12 @@ namespace BangazonAPI.Controllers
                         if (!reader.IsDBNull(reader.GetOrdinal("DecomissionDate")))
                         {
                             computer.DecomissionDate = reader.GetDateTime(reader.GetOrdinal("DecomissionDate"));
-                        } 
-                      
+                        }
+                        else
+                        {
+                            computer.DecomissionDate = null;
+                        }
+
 
                         allComputers.Add(computer);
                     }
@@ -216,9 +234,13 @@ namespace BangazonAPI.Controllers
                         if (!reader.IsDBNull(reader.GetOrdinal("DecomissionDate")))
                         {
                             computer.DecomissionDate = reader.GetDateTime(reader.GetOrdinal("DecomissionDate"));
-                        } 
-                   
-                       
+                        }
+                        else
+                        {
+                            computer.DecomissionDate = null;
+                        }
+
+
                         reader.Close();
 
                         return Ok(computer);
@@ -259,7 +281,7 @@ namespace BangazonAPI.Controllers
         }
 
         ////////----------PUT----------
-        [HttpPut("{id}")]
+       [HttpPut("{id}")]
         public async Task<IActionResult> Put([FromRoute] int id, [FromBody] Computer computer)
         {
             try
@@ -270,10 +292,9 @@ namespace BangazonAPI.Controllers
                     using (SqlCommand cmd = conn.CreateCommand())
                     {
                         cmd.CommandText = @"UPDATE Computer
-                                     SET PurchaseDate = @PurchaseDate, DecomissionDate = @decomissionDate, Make = @Make, Model = @Model
-                                     WHERE Id = @id";
-
-                        cmd.Parameters.Add(new SqlParameter("@PurchaseDate", computer.PurchaseDate));
+                                            SET PurchaseDate = @purchaseDate, DecomissionDate = @decomissionDate, Make = @make, Model = @model
+                                            WHERE Id = @id";
+                        cmd.Parameters.Add(new SqlParameter("@purchaseDate", computer.PurchaseDate));
 
                         if (computer.DecomissionDate == null)
                         {
@@ -284,10 +305,10 @@ namespace BangazonAPI.Controllers
                         {
                             cmd.Parameters.Add(new SqlParameter("@decomissionDate", computer.DecomissionDate));
                         }
+
+                        cmd.Parameters.Add(new SqlParameter("@make", computer.Make));
+                        cmd.Parameters.Add(new SqlParameter("@model", computer.Model));
                         cmd.Parameters.Add(new SqlParameter("@id", id));
-                        cmd.Parameters.Add(new SqlParameter("@Make", computer.Make));
-                        cmd.Parameters.Add(new SqlParameter("@Model", computer.Model));
-                    
 
                         int rowsAffected = cmd.ExecuteNonQuery();
                         if (rowsAffected > 0)
@@ -311,7 +332,60 @@ namespace BangazonAPI.Controllers
             }
         }
 
+        ////////----------DELETE----------
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete([FromRoute] int id)
+        {
 
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        if (!ComputerInUse(id) ){
+
+                        cmd.CommandText = @"DELETE FROM Computer WHERE Id = @id";
+                            cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                            int rowsAffected = cmd.ExecuteNonQuery();
+                            if (rowsAffected > 0)
+                            {
+                                return new StatusCodeResult(StatusCodes.Status204NoContent);
+                            }
+                            throw new Exception("No rows affected");
+
+                            
+                        } 
+                        else
+                        {
+                            return new StatusCodeResult(StatusCodes.Status403Forbidden);
+                        }
+
+                            
+                               
+
+                        
+
+
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                if (!ComputerExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
+        
 
 
         private bool ComputerExists(int id)
@@ -329,6 +403,36 @@ namespace BangazonAPI.Controllers
 
                     SqlDataReader reader = cmd.ExecuteReader();
                     return reader.Read();
+                }
+            }
+        }
+
+        private bool ComputerInUse(int id)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT c.Id, c.PurchaseDate, c.DecomissionDate, c.Make, c.Model, e.ComputerId
+                        FROM Computer c
+                        LEFT JOIN Employee e
+                        ON e.ComputerId = c.Id
+                        WHERE c.Id = @Id";
+                    cmd.Parameters.Add(new SqlParameter("@Id", id));
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    if (reader.IsDBNull(reader.GetOrdinal("ComputerId")))
+                    {
+
+                        return true;
+                    } else
+                    {
+                        return false;
+                    }
+                     //reader.Read();
                 }
             }
         }
