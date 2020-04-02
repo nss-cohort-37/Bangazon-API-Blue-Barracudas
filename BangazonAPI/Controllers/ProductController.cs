@@ -49,8 +49,9 @@ namespace BangazonAPI.Controllers
 
                     if (q != null)
                     {
-                        cmd.CommandText += "AND Title LIKE @title";
-                        cmd.Parameters.Add(new SqlParameter("@Title", "%" + q + "%"));
+                        cmd.CommandText += "AND Title LIKE @title OR Description LIKE @description";
+                        cmd.Parameters.Add(new SqlParameter("@title", "%" + q + "%"));
+                        cmd.Parameters.Add(new SqlParameter("@description", "%" + q + "%"));
                     }
                     if (sortBy == "recent")
                     {
@@ -153,7 +154,7 @@ namespace BangazonAPI.Controllers
                     cmd.CommandText = @"INSERT INTO Product (DateAdded, ProductTypeId, CustomerId, Price, Title, Description)
                                         OUTPUT INSERTED.Id
                                         VALUES (@dateAdded, @productTypeId, @customerId, @price, @title, @description)";
-                    cmd.Parameters.Add(new SqlParameter("@dateAdded", product.DateAdded));
+                    cmd.Parameters.Add(new SqlParameter("@dateAdded", DateTime.Now));
                     cmd.Parameters.Add(new SqlParameter("@productTypeId", product.ProductTypeId));
                     cmd.Parameters.Add(new SqlParameter("@customerId", product.CustomerId));
                     cmd.Parameters.Add(new SqlParameter("@price", product.Price));
