@@ -31,7 +31,25 @@ namespace BangazonAPI.Controllers
         // ----------Get all----------
         [HttpGet]
         public async Task<IActionResult> Get(
+            [FromQuery] string available
           )
+        {
+            if (available != "true" && available != "false")
+            {
+                var computers = GetAllComputers(available);
+                return Ok(computers);
+            } else if (available == "true")
+            {
+                var computers = GetAvailableComputers(available);
+                return Ok(computers);
+            } else
+            {
+                var computers = GetUnavailableComputers(available);
+                return Ok(computers);
+            }
+        }
+
+        private List<Computer> GetAvailableComputers ([FromQuery] string available)
         {
             using (SqlConnection conn = Connection)
             {
@@ -39,21 +57,59 @@ namespace BangazonAPI.Controllers
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"
-                        SELECT Id, PurchaseDate, DecomissionDate, Make, Model
-                        FROM Computer
-                        WHERE 1 = 1 
-                        ";
-                    //if (firstName != null)
-                    //{
-                    //    cmd.CommandText += " AND FirstName LIKE @firstName";
-                    //    cmd.Parameters.Add(new SqlParameter("@firstName", "%" + firstName + "%"));
-                    //};
+                        SELECT c.Id, c.PurchaseDate, c.DecomissionDate, c.Make, c.Model, e.ComputerId
+                        FROM Computer c
+                        LEFT JOIN Employee e
+                        ON e.ComputerId = c.Id";
+              
 
-                    //if (lastName != null)
-                    //{
-                    //    cmd.CommandText += " AND LastName LIKE @lastName";
-                    //    cmd.Parameters.Add(new SqlParameter("@lastName", "%" + lastName + "%"));
-                    //};
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    List<Computer> allComputers = new List<Computer>();
+
+                    while (reader.Read())
+                    {
+                        if (reader.IsDBNull(reader.GetOrdinal("ComputerId")))
+                        {
+
+                        var computer = new Computer()
+                        {
+
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            Make = reader.GetString(reader.GetOrdinal("Make")),
+                            Model = reader.GetString(reader.GetOrdinal("Model")),
+                            PurchaseDate = reader.GetDateTime(reader.GetOrdinal("PurchaseDate")),
+
+                        };
+                        if (!reader.IsDBNull(reader.GetOrdinal("DecomissionDate")))
+                        {
+                            computer.DecomissionDate = reader.GetDateTime(reader.GetOrdinal("DecomissionDate"));
+                        }
+
+                        allComputers.Add(computer);
+                        }
+                    }
+                    reader.Close();
+
+                    return allComputers;
+                }
+            }
+        }
+
+        private List<Computer> GetUnavailableComputers([FromQuery] string available)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT c.Id, c.PurchaseDate, c.DecomissionDate, c.Make, c.Model
+                        FROM Computer c
+                        INNER JOIN Employee e
+                        ON e.ComputerId = c.Id";
+
 
 
                     SqlDataReader reader = cmd.ExecuteReader();
@@ -80,7 +136,50 @@ namespace BangazonAPI.Controllers
                     }
                     reader.Close();
 
-                    return Ok(allComputers);
+                    return allComputers;
+                }
+            }
+        }
+        private List<Computer> GetAllComputers([FromQuery] string available)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT Id, PurchaseDate, DecomissionDate, Make, Model
+                        FROM Computer
+                        WHERE 1 = 1 
+                        ";
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    List<Computer> allComputers = new List<Computer>();
+
+                    while (reader.Read())
+                    {
+                        var computer = new Computer()
+                        {
+
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            Make = reader.GetString(reader.GetOrdinal("Make")),
+                            Model = reader.GetString(reader.GetOrdinal("Model")),
+                            PurchaseDate = reader.GetDateTime(reader.GetOrdinal("PurchaseDate")),
+
+                        };
+
+                        if (!reader.IsDBNull(reader.GetOrdinal("DecomissionDate")))
+                        {
+                            computer.DecomissionDate = reader.GetDateTime(reader.GetOrdinal("DecomissionDate"));
+                        } 
+                      
+
+                        allComputers.Add(computer);
+                    }
+                    reader.Close();
+
+                    return allComputers;
                 }
             }
         }
@@ -117,7 +216,8 @@ namespace BangazonAPI.Controllers
                         if (!reader.IsDBNull(reader.GetOrdinal("DecomissionDate")))
                         {
                             computer.DecomissionDate = reader.GetDateTime(reader.GetOrdinal("DecomissionDate"));
-                        }
+                        } 
+                   
                        
                         reader.Close();
 
@@ -158,6 +258,79 @@ namespace BangazonAPI.Controllers
             }
         }
 
+        ////////----------PUT----------
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Put([FromRoute] int id, [FromBody] Computer computer)
+        {
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"UPDATE Computer
+                                     SET PurchaseDate = @PurchaseDate, DecomissionDate = @decomissionDate, Make = @Make, Model = @Model
+                                     WHERE Id = @id";
 
+                        cmd.Parameters.Add(new SqlParameter("@PurchaseDate", computer.PurchaseDate));
+
+                        if (computer.DecomissionDate == null)
+                        {
+
+                            cmd.Parameters.Add(new SqlParameter("@decomissionDate", DBNull.Value));
+                        }
+                        else
+                        {
+                            cmd.Parameters.Add(new SqlParameter("@decomissionDate", computer.DecomissionDate));
+                        }
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+                        cmd.Parameters.Add(new SqlParameter("@Make", computer.Make));
+                        cmd.Parameters.Add(new SqlParameter("@Model", computer.Model));
+                    
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+                        }
+                        throw new Exception("No rows affected");
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                if (!ComputerExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
+
+
+
+        private bool ComputerExists(int id)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT Id
+                        FROM Computer
+                        WHERE Id = @id";
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+                    return reader.Read();
+                }
+            }
+        }
     }
 }
