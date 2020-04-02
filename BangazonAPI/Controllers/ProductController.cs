@@ -34,8 +34,9 @@ namespace BangazonAPI.Controllers
 
 
         // Get all products
+        // Query params include search by title, sort by recent, sort by popularity, sort by most expensive, sort by least expensive!
         [HttpGet]
-        public async Task<IActionResult> Get([FromQuery] string q, [FromQuery] string sortBy)
+        public async Task<IActionResult> Get([FromQuery] string q, [FromQuery] string sortBy, [FromQuery] bool asc)
         {
             using (SqlConnection conn = Connection)
             {
@@ -63,6 +64,14 @@ namespace BangazonAPI.Controllers
                             ON op.ProductId = p.Id
                             GROUP BY p.Id, p.DateAdded, p.ProductTypeId, p.CustomerId, p.Price, p.Title, p.Description
                             ORDER BY Count DESC";
+                    }
+                    if (sortBy == "price" && asc == true)
+                    {
+                        cmd.CommandText += "ORDER BY Price ASC";
+                    }
+                    if (sortBy == "price" && asc == false)
+                    {
+                        cmd.CommandText += "ORDER BY Price DESC";
                     }
 
                     SqlDataReader reader = cmd.ExecuteReader();
