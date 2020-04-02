@@ -129,5 +129,35 @@ namespace BangazonAPI.Controllers
                 }
             }
         }
+
+        //----------POST----------
+
+        [HttpPost]
+        public async Task<IActionResult> Post([FromBody] Computer computer)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        INSERT INTO Computer (PurchaseDate, DecomissionDate, Make, Model, IsSupervisor, ComputerId)
+                        OUTPUT INSERTED.Id
+                        VALUES (@PurchaseDate, @DecomissionDate, @Make, @Model, @IsSupervisor, @ComputerId)";
+
+                    cmd.Parameters.Add(new SqlParameter("@PurchaseDate", DateTime.Now));
+                    cmd.Parameters.Add(new SqlParameter("@DecomissionDate", computer.DecomissionDate));
+                    cmd.Parameters.Add(new SqlParameter("@Make", computer.Make));
+                    cmd.Parameters.Add(new SqlParameter("@Model", computer.Model));
+                  
+                    int id = (int)cmd.ExecuteScalar();
+
+                    computer.Id = id;
+                    return CreatedAtRoute("GetComputer", new { id = id }, computer);
+                }
+            }
+        }
+
+
     }
 }
