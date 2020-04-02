@@ -344,7 +344,7 @@ namespace BangazonAPI.Controllers
                     conn.Open();
                     using (SqlCommand cmd = conn.CreateCommand())
                     {
-                        if (!ComputerInUse(id) ){
+                        //if (!ComputerInUse(id) ){
 
                         cmd.CommandText = @"DELETE FROM Computer WHERE Id = @id";
                             cmd.Parameters.Add(new SqlParameter("@id", id));
@@ -357,11 +357,11 @@ namespace BangazonAPI.Controllers
                             throw new Exception("No rows affected");
 
                             
-                        } 
-                        else
-                        {
-                            return new StatusCodeResult(StatusCodes.Status403Forbidden);
-                        }
+                        //} 
+                        //else
+                        //{
+                        //    return new StatusCodeResult(StatusCodes.Status403Forbidden);
+                        //}
 
                             
                                
