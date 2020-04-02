@@ -35,14 +35,36 @@ namespace BangazonAPI.Controllers
 
         // Get all products
         [HttpGet]
-        public async Task<IActionResult> Get()
+        public async Task<IActionResult> Get([FromQuery] string q, [FromQuery] string sortBy)
         {
             using (SqlConnection conn = Connection)
             {
                 conn.Open();
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT Id, DateAdded, ProductTypeId, CustomerId, Price, Title, Description FROM Product";
+                    cmd.CommandText = @"SELECT Id, DateAdded, ProductTypeId, CustomerId, Price, Title, Description
+                        FROM Product
+                        WHERE 1 = 1";
+
+                    if (q != null)
+                    {
+                        cmd.CommandText += "AND Title LIKE @title";
+                        cmd.Parameters.Add(new SqlParameter("@Title", "%" + q + "%"));
+                    }
+                    if (sortBy == "recent")
+                    {
+                        cmd.CommandText += "ORDER BY DateAdded DESC";
+                    }
+                    if (sortBy == "popularity")
+                    {
+                        cmd.CommandText = @"SELECT p.Id, p.DateAdded, p.ProductTypeId, p.CustomerId, p.Price, p.Title, p.Description, COUNT(op.ProductId) AS Count
+                            FROM Product p
+                            LEFT JOIN OrderProduct op
+                            ON op.ProductId = p.Id
+                            GROUP BY p.Id, p.DateAdded, p.ProductTypeId, p.CustomerId, p.Price, p.Title, p.Description
+                            ORDER BY Count DESC";
+                    }
+
                     SqlDataReader reader = cmd.ExecuteReader();
                     List<Product> products = new List<Product>();
 
