@@ -344,9 +344,8 @@ namespace BangazonAPI.Controllers
                     conn.Open();
                     using (SqlCommand cmd = conn.CreateCommand())
                     {
-                        //if (!ComputerInUse(id) ){
 
-                        cmd.CommandText = @"DELETE FROM Computer WHERE Id = @id";
+                            cmd.CommandText = @"DELETE FROM Computer WHERE Id = @id";
                             cmd.Parameters.Add(new SqlParameter("@id", id));
 
                             int rowsAffected = cmd.ExecuteNonQuery();
@@ -356,19 +355,6 @@ namespace BangazonAPI.Controllers
                             }
                             throw new Exception("No rows affected");
 
-                            
-                        //} 
-                        //else
-                        //{
-                        //    return new StatusCodeResult(StatusCodes.Status403Forbidden);
-                        //}
-
-                            
-                               
-
-                        
-
-
                     }
                 }
             }
@@ -377,6 +363,10 @@ namespace BangazonAPI.Controllers
                 if (!ComputerExists(id))
                 {
                     return NotFound();
+                }
+                if (ComputerInUse(id))
+                {
+                    return new StatusCodeResult(StatusCodes.Status403Forbidden);
                 }
                 else
                 {
@@ -415,24 +405,14 @@ namespace BangazonAPI.Controllers
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"
-                        SELECT c.Id, c.PurchaseDate, c.DecomissionDate, c.Make, c.Model, e.ComputerId
-                        FROM Computer c
-                        LEFT JOIN Employee e
-                        ON e.ComputerId = c.Id
-                        WHERE c.Id = @Id";
+                        SELECT Id, PurchaseDate, DecomissionDate, Make, Model
+                        FROM Computer
+                        WHERE Id = @id AND Id IN (SELECT ComputerId FROM Employee)";
+                   
                     cmd.Parameters.Add(new SqlParameter("@Id", id));
 
                     SqlDataReader reader = cmd.ExecuteReader();
-
-                    if (reader.IsDBNull(reader.GetOrdinal("ComputerId")))
-                    {
-
-                        return true;
-                    } else
-                    {
-                        return false;
-                    }
-                     //reader.Read();
+                     return reader.Read();
                 }
             }
         }
