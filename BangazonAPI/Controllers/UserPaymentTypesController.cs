@@ -41,15 +41,18 @@ namespace BangazonAPI.Controllers
                 conn.Open();
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
+                    if (customerId != null)
+                    {
                     cmd.CommandText = @"
                         SELECT u.Id, u.AcctNumber, u.Active, u.CustomerId, u.PaymentTypeid 
                         FROM UserPaymentType u
                         WHERE u.Active = 1
-                        ";
-                    if (customerId != null)
-                    {
-                        cmd.CommandText += " AND u.Id = @id";
+                        AND u.Id = @id";
                         cmd.Parameters.Add(new SqlParameter("@Id", customerId));
+                    }
+                    else
+                    {
+                        return new StatusCodeResult(StatusCodes.Status403Forbidden);
                     };
 
                   
