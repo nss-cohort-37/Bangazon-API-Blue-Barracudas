@@ -164,34 +164,39 @@ namespace BangazonAPI.Controllers
         }
 
 
-        //Add employee to training program              url: api/trainingPrograms/{id}/employees                POST                Employee Object TrainingProgram Object w/ Employees
+        //Add employee to training program              url: api/trainingPrograms/{id}/employees                method: POST                Employee Object      TrainingProgram Object w/ Employees
 
-        //[HttpPost]
-        //public async Task<IActionResult> Post([FromBody] TrainingProgram employeeTraining)
-        //{
-        //    using (SqlConnection conn = Connection)
-        //    {
-        //        conn.Open();
-        //        using (SqlCommand cmd = conn.CreateCommand())
-        //        {
-        //            cmd.CommandText = @"INSERT INTO EmployeeTraining (EmployeeId, TrainingProgramId)
-        //                                OUTPUT INSERTED.Id
-        //                                VALUES (@EmployeeId, @TrainingProgramId)";
-        //            cmd.Parameters.Add(new SqlParameter("@EmployeeId", employeeTraining.EmployeeId);
-        //            cmd.Parameters.Add(new SqlParameter("@TrainingProgramId" employeeTraining.TrainingProgramId));
+        [HttpPost]
+        [Route("{id}/employees")]
+        public async Task<IActionResult> Post([FromBody] Employee employee, 
+                                               [FromRoute] int id)
+                                                
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"INSERT INTO EmployeeTraining (EmployeeId, TrainingProgramId)
+                                        OUTPUT INSERTED.Id
+                                        VALUES (@EmployeeId, @TrainingProgramId)";
+                    cmd.Parameters.Add(new SqlParameter("@EmployeeId", employee.Id));
+                    cmd.Parameters.Add(new SqlParameter("@TrainingProgramId", id));
 
-        //            int newId = (int)cmd.ExecuteScalar();
-        //            employeeTraining.Id = newId;
-        //            return CreatedAtRoute("GetTrainingProgram", new { id = newId }, employeeTraining);
-        //        }
-        //    }
-        //}
+                    int newId = (int)cmd.ExecuteScalar();
+                    return RedirectToRoute("GetTrainingProgram", new {id = id} );
+                   
+                }
+            }
+        }
 
         //Remove employee from program                  url: api/trainingPrograms/{id}/employees/{employeeId}	DELETE
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete([FromRoute] int EmployeeId,
-                                                [FromRoute] int TrainingProgramId)
+        [Route("{trainingProgramId}/employees/{employeeId}")]
+  
+        public async Task<IActionResult> Delete([FromRoute] int employeeId,
+                                                [FromRoute] int trainingProgramId)
         {
             try
             {
@@ -201,8 +206,8 @@ namespace BangazonAPI.Controllers
                     using (SqlCommand cmd = conn.CreateCommand())
                     {
                         cmd.CommandText = @"  DELETE FROM EmployeeTraining WHERE EmployeeId = @EmployeeId AND TrainingProgramId = @TrainingProgramId";
-                        cmd.Parameters.Add(new SqlParameter("@EmployeeId", EmployeeId));
-                        cmd.Parameters.Add(new SqlParameter("@TrainingProgramId", TrainingProgramId));
+                        cmd.Parameters.Add(new SqlParameter("@EmployeeId", employeeId));
+                        cmd.Parameters.Add(new SqlParameter("@TrainingProgramId", trainingProgramId));
 
                         int rowsAffected = cmd.ExecuteNonQuery();
                         if (rowsAffected > 0)
@@ -215,7 +220,7 @@ namespace BangazonAPI.Controllers
             }
             catch (Exception)
             {
-                if (!TrainingProgramExists(EmployeeId))
+                if (!TrainingProgramExists(employeeId))
                 {
                     return NotFound();
                 }
