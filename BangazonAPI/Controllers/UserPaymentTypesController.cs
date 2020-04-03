@@ -160,6 +160,59 @@ namespace BangazonAPI.Controllers
         }
 
 
+        ////////----------DELETE----------
+        /// soft delete only changing active to false
+        [HttpDelete("{id}")]
+
+        public async Task<IActionResult> Delete([FromRoute] int id)
+
+        {
+            try
+
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+
+                    using (SqlCommand cmd = conn.CreateCommand())
+
+                    {
+                        cmd.CommandText = @"UPDATE UserPaymentType 
+                                            SET Active = @active
+                                            WHERE Id = @id";
+
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                        cmd.Parameters.Add(new SqlParameter("@active", false));
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0)
+
+                        {
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+                        }
+
+                        throw new Exception("No rows affected");
+
+                    }
+                }
+            }
+
+            catch (Exception)
+
+            {
+                if (!UserPaymentTypeExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
         private bool UserPaymentTypeExists(int id)
         {
             using (SqlConnection conn = Connection)
