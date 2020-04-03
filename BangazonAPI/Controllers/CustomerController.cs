@@ -173,12 +173,12 @@ namespace BangazonAPI.Controllers
                                         Id = reader.GetInt32(reader.GetOrdinal("ProductId")),
                                         ProductTypeId = reader.GetInt32(reader.GetOrdinal("ProductTypeId")),
                                         Description = reader.GetString(reader.GetOrdinal("Description")),
-                                        Price = reader.GetDouble(reader.GetOrdinal("Price")),
+                                        Price = reader.GetDecimal(reader.GetOrdinal("Price")),
                                         Title = reader.GetString(reader.GetOrdinal("Title")),
                                         CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
                                         DateAdded = reader.GetDateTime(reader.GetOrdinal("DateAdded"))
 
-                                    });
+                                    });;
 
                                 }
                             }
