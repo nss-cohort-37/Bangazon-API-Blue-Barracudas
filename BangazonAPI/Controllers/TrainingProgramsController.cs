@@ -10,21 +10,6 @@ using Microsoft.Data.SqlClient;
 using BangazonAPI.Models;
 
 
-
-
-//Add training program                          url: api/trainingPrograms                               POST                TrainingProgram Object  Training Program Object
-//Add employee to training program              url: api/trainingPrograms/{id}/employees                POST                Employee Object TrainingProgram Object w/ Employees
-//Update training program                       url: api/trainingPrograms/{id}	                        PUT                 TrainingProgram Object TrainingProgram Object
-//Remove training program                       url: api/trainingPrograms/{id}	                        DELETE
-//Remove employee from program                  url: api/trainingPrograms/{id}/employees/{employeeId}	DELETE
-
-//TRAINING PROGRAM PROPS
-//public int        Id
-//public string     Name 
-//public DateTime   StartDate
-//public DateTime   EndDate
-//public int        MaxAttendees
-
 namespace BangazonAPI.Controllers
 {
     [Route("api/[controller]")]
@@ -153,6 +138,8 @@ namespace BangazonAPI.Controllers
 
 
         //Add a trainingProgram          url: "api/trainingPrograms"         method: POST             result: TrainingProgram Object   
+        //When POSTing StartDate & EndDate you must use format year month date (i.e. 2018-09-06)
+
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] TrainingProgram trainingProgram)
         {
@@ -175,68 +162,171 @@ namespace BangazonAPI.Controllers
                 }
             }
         }
+
+
+        //Add employee to training program              url: api/trainingPrograms/{id}/employees                POST                Employee Object TrainingProgram Object w/ Employees
+
+        //[HttpPost]
+        //public async Task<IActionResult> Post([FromBody] TrainingProgram employeeTraining)
+        //{
+        //    using (SqlConnection conn = Connection)
+        //    {
+        //        conn.Open();
+        //        using (SqlCommand cmd = conn.CreateCommand())
+        //        {
+        //            cmd.CommandText = @"INSERT INTO EmployeeTraining (EmployeeId, TrainingProgramId)
+        //                                OUTPUT INSERTED.Id
+        //                                VALUES (@EmployeeId, @TrainingProgramId)";
+        //            cmd.Parameters.Add(new SqlParameter("@EmployeeId", employeeTraining.EmployeeId);
+        //            cmd.Parameters.Add(new SqlParameter("@TrainingProgramId" employeeTraining.TrainingProgramId));
+
+        //            int newId = (int)cmd.ExecuteScalar();
+        //            employeeTraining.Id = newId;
+        //            return CreatedAtRoute("GetTrainingProgram", new { id = newId }, employeeTraining);
+        //        }
+        //    }
+        //}
+
+        //Remove employee from program                  url: api/trainingPrograms/{id}/employees/{employeeId}	DELETE
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete([FromRoute] int EmployeeId,
+                                                [FromRoute] int TrainingProgramId)
+        {
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"  DELETE FROM EmployeeTraining WHERE EmployeeId = @EmployeeId AND TrainingProgramId = @TrainingProgramId";
+                        cmd.Parameters.Add(new SqlParameter("@EmployeeId", EmployeeId));
+                        cmd.Parameters.Add(new SqlParameter("@TrainingProgramId", TrainingProgramId));
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+                        }
+                        throw new Exception("No rows affected");
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                if (!TrainingProgramExists(EmployeeId))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
+
+        //Update training program                       url: api/trainingPrograms/{id}	                        PUT                 TrainingProgram Object TrainingProgram Object
+
+        public async Task<IActionResult> Put([FromRoute] int id, [FromBody] TrainingProgram trainingProgram)
+{
+    try
+    {
+        using (SqlConnection conn = Connection)
+        {
+            conn.Open();
+            using (SqlCommand cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = @"UPDATE TrainingProgram
+                                            SET Name = @Name,
+                                                StartDate = @StartDate,
+                                                EndDate = @EndDate,
+                                                MaxAttendees = @MaxAttendees
+                                            WHERE Id = @id";
+                        cmd.Parameters.Add(new SqlParameter("@Name", trainingProgram.Name));
+                        cmd.Parameters.Add(new SqlParameter("@StartDate", trainingProgram.StartDate));
+                        cmd.Parameters.Add(new SqlParameter("@EndDate", trainingProgram.EndDate));
+                        cmd.Parameters.Add(new SqlParameter("@MaxAttendees", trainingProgram.MaxAttendees));
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                int rowsAffected = cmd.ExecuteNonQuery();
+                if (rowsAffected > 0)
+                {
+                    return new StatusCodeResult(StatusCodes.Status204NoContent);
+                }
+                throw new Exception("No rows affected");
+                throw new Exception("No rows affected");
+            }
+        }
+    }
+    catch (Exception)
+    {
+        if (!TrainingProgramExists(id))
+        {
+            return NotFound();
+        }
+        else
+        {
+            throw;
+        }
     }
 }
 
-//        //Update a trainingProgram              url: "api/trainingPrograms/{id}"	           method: PUT     result: TrainingProgram Object    
-//        [HttpPut("{id}")]
-//        public async Task<IActionResult> Put([FromRoute] int id, [FromBody] TrainingProgram trainingProgram)
-//        {
-//            try
-//            {
-//                using (SqlConnection conn = Connection)
-//                {
-//                    conn.Open();
-//                    using (SqlCommand cmd = conn.CreateCommand())
-//                    {
-//                        cmd.CommandText = @"UPDATE TrainingProgram
-//                                            SET Name = @Name,
-//                                                Budget = @Budget
-//                                            WHERE Id = @id";
-//                        cmd.Parameters.Add(new SqlParameter("@Name", trainingProgram.Name));
-//                        cmd.Parameters.Add(new SqlParameter("@Budget", trainingProgram.Budget));
-//                        cmd.Parameters.Add(new SqlParameter("@id", id));
+        //Remove training program                       url: api/trainingPrograms/{id}	                        DELETE
 
-//                        int rowsAffected = cmd.ExecuteNonQuery();
-//                        if (rowsAffected > 0)
-//                        {
-//                            return new StatusCodeResult(StatusCodes.Status204NoContent);
-//                        }
-//                        throw new Exception("No rows affected");
-//                        throw new Exception("No rows affected");
-//                    }
-//                }
-//            }
-//            catch (Exception)
-//            {
-//                if (!TrainingProgramExists(id))
-//                {
-//                    return NotFound();
-//                }
-//                else
-//                {
-//                    throw;
-//                }
-//            }
-//        }
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete([FromRoute] int id)
+        {
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"DELETE FROM TrainingProgram WHERE Id = @id";
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
 
-//private bool TrainingProgramExists(int id)
-//{
-//    using (SqlConnection conn = Connection)
-//    {
-//        conn.Open();
-//        using (SqlCommand cmd = conn.CreateCommand())
-//        {
-//            cmd.CommandText = @"
-//                        SELECT Id, Name, Budget
-//                        FROM TrainingProgram
-//                        WHERE Id = @id";
-//            cmd.Parameters.Add(new SqlParameter("@id", id));
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+                        }
+                        throw new Exception("No rows affected");
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                if (!TrainingProgramExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
 
-//            SqlDataReader reader = cmd.ExecuteReader();
-//            return reader.Read();
-//        }
-//    }
-//        }
-//    }
-//}
+        private bool TrainingProgramExists(int id)
+{
+    using (SqlConnection conn = Connection)
+    {
+        conn.Open();
+        using (SqlCommand cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                        SELECT Id, Name, StartDate, EndDate, MaxAttendees
+                        FROM TrainingProgram
+                        WHERE Id = @id";
+            cmd.Parameters.Add(new SqlParameter("@id", id));
+
+            SqlDataReader reader = cmd.ExecuteReader();
+            return reader.Read();
+        }
+    }
+}
+    }
+}

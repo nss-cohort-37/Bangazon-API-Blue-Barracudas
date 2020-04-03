@@ -83,11 +83,14 @@ namespace BangazonAPI.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> Get([FromRoute] int id, [FromQuery] string includes)
         {
+
+            //if the department includes employees this method  will run
             if (includes == "employees")
             {
                 var department = GetDepartmentWithEmployees(id);
                 return Ok(department);
             }
+            //if the department does not it will still render with an empty employee list 
             else
             {
                 var department = GetDepartment(id);
@@ -194,10 +197,6 @@ namespace BangazonAPI.Controllers
             }
         }
         //GET department with employees    url: "api/departments/{id}?include = employees"      method: GET         result: Department Array w/ employees
-
-        //EMPLOYEE PROPS
-        //public int Id             public string FirstName         public string LastName         public int DepartmentId 
-        //public string Email       public bool IsSupervisor        public int ComputerId           public Department department        public Computer computer 
 
         private Department GetDepartmentWithEmployees(int id)
         {
