@@ -9,11 +9,6 @@ using System.Data;
 using Microsoft.Data.SqlClient;
 using BangazonAPI.Models;
 
-//PROPS
-//publiC int Id { get; set; }
-//public string Name { get; set; }
-//public int Budget { get; set; }
-
 namespace BangazonAPI.Controllers
 {
     [Route("api/[controller]")]
@@ -36,14 +31,7 @@ namespace BangazonAPI.Controllers
             }
         }
 
-
         //GET all departments               url: "api/departments"    method: GET     result: Department Array
-
-        //DEPARTMENT PROPS
-        //publiC int Id     public string Name          public int Budget       public List<Employee> EmployeesByDept
-
-        //when running this will show a null value for the "<list>employees" on the department model 
-
         [HttpGet]
         public async Task<IActionResult> Get()
         {
@@ -63,7 +51,7 @@ namespace BangazonAPI.Controllers
                             Id = reader.GetInt32(reader.GetOrdinal("Id")),
                             Name = reader.GetString(reader.GetOrdinal("Name")),
                             Budget = reader.GetInt32(reader.GetOrdinal("Budget")),
-
+                            Employees = new List<Employee>()
                         };
 
                         departments.Add(department);
@@ -76,26 +64,107 @@ namespace BangazonAPI.Controllers
             }
         }
 
-      
-
         //this get method with throw an exception and will run either of these GETs. These methods are a private method listed below. 
 
         [HttpGet("{id}")]
         public async Task<IActionResult> Get([FromRoute] int id, [FromQuery] string includes)
         {
+            //if the department includes employees this method  will run
             if (includes == "employees")
             {
                 var department = GetDepartmentWithEmployees(id);
                 return Ok(department);
             }
+            //if the department does not it will still render with an empty employee list 
             else
             {
                 var department = GetDepartment(id);
                 return Ok(department);
             }
-
-
         }
+
+        //GET department by Id              url: "api/departments/{id}"	        method: GET     result: Department Object
+        private Department GetDepartment(int id)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"SELECT Id, Name, Budget FROM Department WHERE Id = @id";
+
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                    var reader = cmd.ExecuteReader();
+                    Department department = new Department();
+
+                    if (reader.Read())
+                    {
+                        department = new Department()
+                        {
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            Name = reader.GetString(reader.GetOrdinal("Name")),
+                            Budget = reader.GetInt32(reader.GetOrdinal("Budget")),
+                            Employees = new List<Employee>()
+                        };
+                    }
+                    reader.Close();
+
+                    return department;
+                }
+            }
+        }
+
+        //GET department with employees    url: "api/departments/{id}?include = employees"      method: GET         result: Department Array w/ employees
+        private Department GetDepartmentWithEmployees(int id)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT d.Id, d.Name, d.Budget, e.Id as EmployeeId, e.LastName, e.FirstName, e.Email, e.IsSupervisor, e.DepartmentId, e.ComputerId
+                        FROM Department d 
+                        INNER JOIN Employee e ON d.Id = e.DepartmentId
+                        WHERE d.Id = @id";
+
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                    var reader = cmd.ExecuteReader();
+                    Department department = null;
+
+                    while (reader.Read())
+                    {
+                        if (department == null)
+                        {
+                            department = new Department()
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                Name = reader.GetString(reader.GetOrdinal("Name")),
+                                Budget = reader.GetInt32(reader.GetOrdinal("Budget")),
+                                Employees = new List<Employee>()
+                            };
+                        }
+
+                        department.Employees.Add(new Employee()
+                        {
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
+                            LastName = reader.GetString(reader.GetOrdinal("LastName")),
+                            Email = reader.GetString(reader.GetOrdinal("Email")),
+                            IsSupervisor = reader.GetBoolean(reader.GetOrdinal("IsSupervisor")),
+                            DepartmentId = reader.GetInt32(reader.GetOrdinal("DepartmentId")),
+                            ComputerId = reader.GetInt32(reader.GetOrdinal("ComputerId")),
+                        });
+                    }
+                    reader.Close();
+
+                    return department;
+                }
+            }
+        }
+
 
 
         //Add a department          url: "api/departments"         method: POST             result: Department Object   
@@ -161,98 +230,6 @@ namespace BangazonAPI.Controllers
                 }
             }
         }
-
-        //GET department by Id              url: "api/departments/{id}"	        method: GET     result: Department Object
-        private Department GetDepartment(int id)
-        {
-            using (SqlConnection conn = Connection)
-            {
-                conn.Open();
-                using (SqlCommand cmd = conn.CreateCommand())
-                {
-                    cmd.CommandText = @"SELECT Id, Name, Budget FROM Department WHERE Id = @id";
-
-                    cmd.Parameters.Add(new SqlParameter("@id", id));
-
-                    var reader = cmd.ExecuteReader();
-                    Department department = new Department();
-
-                    if (reader.Read())
-                    {
-                        department = new Department()
-                        {
-                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                            Name = reader.GetString(reader.GetOrdinal("Name")),
-                            Budget = reader.GetInt32(reader.GetOrdinal("Budget")),
-                        };
-                    }
-                    reader.Close();
-
-                    return department;
-                }
-            }
-        }
-        //GET department with employees    url: "api/departments/{id}?include = employees"      method: GET         result: Department Array w/ employees
-
-        //EMPLOYEE PROPS
-        //public int Id             public string FirstName         public string LastName         public int DepartmentId 
-        //public string Email       public bool IsSupervisor        public int ComputerId           public Department department        public Computer computer 
-
-        private Department GetDepartmentWithEmployees(int id)
-        {
-            using (SqlConnection conn = Connection)
-            {
-                conn.Open();
-                using (SqlCommand cmd = conn.CreateCommand())
-                {
-                    cmd.CommandText = @"
-                        SELECT d.Id, d.Name, d.Budget, e.Id as EmployeeId, e.LastName, e.FirstName, e.Email, e.IsSupervisor, e.DepartmentId, e.ComputerId
-                        FROM Department d 
-                        INNER JOIN Employee e ON d.Id = e.DepartmentId
-                        WHERE d.Id = @id";
-
-                    cmd.Parameters.Add(new SqlParameter("@id", id));
-
-                    var reader = cmd.ExecuteReader();
-                    Department department = null;
-
-                    while (reader.Read())
-                    {
-                        if (department == null)
-                        {
-                            department = new Department()
-                            {
-                                Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                                Name = reader.GetString(reader.GetOrdinal("Name")),
-                                Budget = reader.GetInt32(reader.GetOrdinal("Budget")),
-                                Employees = new List<Employee>()
-                            };
-                        }
-
-                        department.Employees.Add(new Employee()
-                        {
-                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                            FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
-                            LastName = reader.GetString(reader.GetOrdinal("LastName")),
-                            Email = reader.GetString(reader.GetOrdinal("Email")),
-                            IsSupervisor = reader.GetBoolean(reader.GetOrdinal("IsSupervisor")),
-                            DepartmentId = reader.GetInt32(reader.GetOrdinal("DepartmentId")),
-                            ComputerId = reader.GetInt32(reader.GetOrdinal("ComputerId")),
-                    
-
-                        });
-                    }
-                    reader.Close();
-
-                    return department;
-                }
-            }
-        }
-
-
-
-
-       
 
         private bool DepartmentExists(int id)
         {
