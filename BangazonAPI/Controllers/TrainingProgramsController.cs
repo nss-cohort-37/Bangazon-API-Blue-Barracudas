@@ -32,19 +32,23 @@ namespace BangazonAPI.Controllers
             }
         }
 
-
-
-        //Get upcoming training programs           url: api/trainingPrograms            method: GET                       result: TrainingProgram Array
+        //Get upcoming training programs           url: api/trainingprograms            method: GET                       result: TrainingProgram Array
+        //the orignal GET will one show programs that are after today's date a query has been added to show all past (inactive) programs...  url: api/trainingprograms?inactive=true
 
         [HttpGet]
-        public async Task<IActionResult> Get()
+        public async Task<IActionResult> Get([FromQuery] string inactive)
         {
             using (SqlConnection conn = Connection)
             {
                 conn.Open();
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT Id, Name, StartDate, EndDate, MaxAttendees FROM TrainingProgram";
+                    cmd.CommandText = "SELECT Id, Name, StartDate, EndDate, MaxAttendees FROM TrainingProgram WHERE StartDate >= GETDATE()";
+
+                    if (inactive == "true")
+                    {
+                        cmd.CommandText = "SELECT Id, Name, StartDate, EndDate, MaxAttendees FROM TrainingProgram WHERE StartDate <= GETDATE()";
+                    }
                     SqlDataReader reader = cmd.ExecuteReader();
                     List<TrainingProgram> trainingPrograms = new List<TrainingProgram>();
 
@@ -79,24 +83,23 @@ namespace BangazonAPI.Controllers
                 conn.Open();
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = @"
-                    SELECT tp.Id, tp.Name, tp.StartDate, tp.MaxAttendees, tp.EndDate, 
-                                          e.Id AS EmployeeId , e.FirstName, e.LastName,
-                                              e.Email, e.IsSupervisor, e.DepartmentId, e.ComputerId
+                    cmd.CommandText = @"SELECT 
+                                        tp.Id, tp.Name, tp.StartDate, tp.MaxAttendees, tp.EndDate, 
+                                        e.Id AS EmployeeId , e.FirstName, e.LastName,
+                                        e.Email, e.IsSupervisor, e.DepartmentId, e.ComputerId
                                         FROM TrainingProgram tp 
                                         LEFT JOIN EmployeeTraining et ON tp.Id = et.TrainingProgramId 
                                         LEFT JOIN Employee e ON e.Id = et.EmployeeId
                                         WHERE tp.id = @id";
+
                     cmd.Parameters.Add(new SqlParameter("@id", id));
                     SqlDataReader reader = cmd.ExecuteReader();
 
                     TrainingProgram trainingProgram = null;
                     while (reader.Read())
                     {
-
                         if (trainingProgram == null)
                         {
-
                             trainingProgram = new TrainingProgram
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("Id")),
@@ -107,12 +110,9 @@ namespace BangazonAPI.Controllers
                                 Employees = new List<Employee>()
                             };
                         }
-
-                        var hasEmployees = !reader.IsDBNull(reader.GetOrdinal("EmployeeId"));
-
-                        if (hasEmployees)
+                        
+                        if (!reader.IsDBNull(reader.GetOrdinal("EmployeeId")))
                         {
-
                             trainingProgram.Employees.Add(new Employee()
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("EmployeeId")),
@@ -124,18 +124,12 @@ namespace BangazonAPI.Controllers
                                 ComputerId = reader.GetInt32(reader.GetOrdinal("ComputerId"))
                             });
                         }
-
                     }
                     reader.Close();
                     return Ok(trainingProgram);
                 }
             }
         }
-
-
-
-
-
 
         //Add a trainingProgram          url: "api/trainingPrograms"         method: POST             result: TrainingProgram Object   
         //When POSTing StartDate & EndDate you must use format year month date (i.e. 2018-09-06)
@@ -165,12 +159,14 @@ namespace BangazonAPI.Controllers
 
 
         //Add employee to training program              url: api/trainingPrograms/{id}/employees                method: POST                Employee Object      TrainingProgram Object w/ Employees
+        //JSON Body For Test
+        //"id" : (1-4)
+
 
         [HttpPost]
         [Route("{id}/employees")]
-        public async Task<IActionResult> Post([FromBody] Employee employee, 
-                                               [FromRoute] int id)
-                                                
+        public async Task<IActionResult> Post([FromBody] Employee employee,
+                                              [FromRoute] int id)
         {
             using (SqlConnection conn = Connection)
             {
@@ -184,19 +180,15 @@ namespace BangazonAPI.Controllers
                     cmd.Parameters.Add(new SqlParameter("@TrainingProgramId", id));
 
                     int newId = (int)cmd.ExecuteScalar();
-                    return RedirectToRoute("GetTrainingProgram", new {id = id} );
-                   
+                    return RedirectToRoute("GetTrainingProgram", new { id = id });
+
                 }
             }
         }
 
-        //Remove employee from program                  url: api/trainingPrograms/{id}/employees/{employeeId}	DELETE
-
-        [HttpDelete("{id}")]
-        [Route("{trainingProgramId}/employees/{employeeId}")]
-  
-        public async Task<IActionResult> Delete([FromRoute] int employeeId,
-                                                [FromRoute] int trainingProgramId)
+        //Update training program                       url: api/trainingPrograms/{id}	                        PUT                 TrainingProgram Object TrainingProgram Object
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Put([FromRoute] int id, [FromBody] TrainingProgram trainingProgram)
         {
             try
             {
@@ -205,45 +197,7 @@ namespace BangazonAPI.Controllers
                     conn.Open();
                     using (SqlCommand cmd = conn.CreateCommand())
                     {
-                        cmd.CommandText = @"  DELETE FROM EmployeeTraining WHERE EmployeeId = @EmployeeId AND TrainingProgramId = @TrainingProgramId";
-                        cmd.Parameters.Add(new SqlParameter("@EmployeeId", employeeId));
-                        cmd.Parameters.Add(new SqlParameter("@TrainingProgramId", trainingProgramId));
-
-                        int rowsAffected = cmd.ExecuteNonQuery();
-                        if (rowsAffected > 0)
-                        {
-                            return new StatusCodeResult(StatusCodes.Status204NoContent);
-                        }
-                        throw new Exception("No rows affected");
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                if (!TrainingProgramExists(employeeId))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-        }
-
-
-        //Update training program                       url: api/trainingPrograms/{id}	                        PUT                 TrainingProgram Object TrainingProgram Object
-
-        public async Task<IActionResult> Put([FromRoute] int id, [FromBody] TrainingProgram trainingProgram)
-{
-    try
-    {
-        using (SqlConnection conn = Connection)
-        {
-            conn.Open();
-            using (SqlCommand cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = @"UPDATE TrainingProgram
+                        cmd.CommandText = @"UPDATE TrainingProgram
                                             SET Name = @Name,
                                                 StartDate = @StartDate,
                                                 EndDate = @EndDate,
@@ -255,49 +209,12 @@ namespace BangazonAPI.Controllers
                         cmd.Parameters.Add(new SqlParameter("@MaxAttendees", trainingProgram.MaxAttendees));
                         cmd.Parameters.Add(new SqlParameter("@id", id));
 
-                int rowsAffected = cmd.ExecuteNonQuery();
-                if (rowsAffected > 0)
-                {
-                    return new StatusCodeResult(StatusCodes.Status204NoContent);
-                }
-                throw new Exception("No rows affected");
-                throw new Exception("No rows affected");
-            }
-        }
-    }
-    catch (Exception)
-    {
-        if (!TrainingProgramExists(id))
-        {
-            return NotFound();
-        }
-        else
-        {
-            throw;
-        }
-    }
-}
-
-        //Remove training program                       url: api/trainingPrograms/{id}	                        DELETE
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete([FromRoute] int id)
-        {
-            try
-            {
-                using (SqlConnection conn = Connection)
-                {
-                    conn.Open();
-                    using (SqlCommand cmd = conn.CreateCommand())
-                    {
-                        cmd.CommandText = @"DELETE FROM TrainingProgram WHERE Id = @id";
-                        cmd.Parameters.Add(new SqlParameter("@id", id));
-
                         int rowsAffected = cmd.ExecuteNonQuery();
                         if (rowsAffected > 0)
                         {
                             return new StatusCodeResult(StatusCodes.Status204NoContent);
                         }
+                        throw new Exception("No rows affected");
                         throw new Exception("No rows affected");
                     }
                 }
@@ -314,6 +231,105 @@ namespace BangazonAPI.Controllers
                 }
             }
         }
+
+//        [HttpDelete("{id}")]
+//        public async Task<IActionResult> Delete([FromRoute] int id,
+//                                                [FromRoute] int employeeId,
+//                                                [FromRoute] int trainingProgramId)
+//        {
+//]
+//            //if the department includes employees this method  will run
+//            if ()
+//            {
+//                var trainingProgram = DeleteTrainingProgram(id);
+//                return Ok(trainingProgram);
+//            }
+//            //if the department does not it will still render with an empty employee list 
+//            else
+//            {
+//                var employeeTraining = DeleteEmployeeFromTrainingProgram(employeeId, trainingProgramId);
+//                return Ok(employeeTraining);
+//            }
+
+
+//        }
+
+//        //Remove training program                       url: api/trainingPrograms/{id}	                        DELETE
+//        [HttpDelete("{id}")]
+//        private async Task<IActionResult> DeleteTrainingProgram([FromRoute] int id)
+//        {
+//            try
+//            {
+//                using (SqlConnection conn = Connection)
+//                {
+//                    conn.Open();
+//                    using (SqlCommand cmd = conn.CreateCommand())
+//                    {
+//                        cmd.CommandText = @"DELETE FROM TrainingProgram WHERE Id = @id";
+//                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+//                        int rowsAffected = cmd.ExecuteNonQuery();
+//                        if (rowsAffected > 0)
+//                        {
+//                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+//                        }
+//                        throw new Exception("No rows affected");
+//                    }
+//                }
+//            }
+//            catch (Exception)
+//            {
+//                if (!TrainingProgramExists(id))
+//                {
+//                    return NotFound();
+//                }
+//                else
+//                {
+//                    throw;
+//                }
+//            }
+//        }
+
+//        //Remove employee from program                  url: api/trainingPrograms/{id}/employees/{employeeId}	DELETE
+
+//        [HttpDelete("{trainingProgramId}")]
+//        [Route("{trainingProgramId}/employees/{employeeId}")]
+
+//        private async Task<IActionResult> DeleteEmployeeFromTrainingProgram([FromRoute] int employeeId,
+//                                                                    [FromRoute] int trainingProgramId)
+//        {
+//            try
+//            {
+//                using (SqlConnection conn = Connection)
+//                {
+//                    conn.Open();
+//                    using (SqlCommand cmd = conn.CreateCommand())
+//                    {
+//                        cmd.CommandText = @"  DELETE FROM EmployeeTraining WHERE EmployeeId = @EmployeeId AND TrainingProgramId = @TrainingProgramId";
+//                        cmd.Parameters.Add(new SqlParameter("@EmployeeId", employeeId));
+//                        cmd.Parameters.Add(new SqlParameter("@TrainingProgramId", trainingProgramId));
+
+//                        int rowsAffected = cmd.ExecuteNonQuery();
+//                        if (rowsAffected > 0)
+//                        {
+//                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+//                        }
+//                        throw new Exception("No rows affected");
+//                    }
+//                }
+//            }
+//            catch (Exception)
+//            {
+//                if (!TrainingProgramExists(employeeId))
+//                {
+//                    return NotFound();
+//                }
+//                else
+//                {
+//                    throw;
+//                }
+//            }
+//        }
 
         private bool TrainingProgramExists(int id)
 {
