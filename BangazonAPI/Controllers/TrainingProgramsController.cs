@@ -146,35 +146,37 @@ namespace BangazonAPI.Controllers
                 }
             }
         }
+
+
+
+
+
+
+        //Add a trainingProgram          url: "api/trainingPrograms"         method: POST             result: TrainingProgram Object   
+        [HttpPost]
+        public async Task<IActionResult> Post([FromBody] TrainingProgram trainingProgram)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"INSERT INTO TrainingProgram (Name, StartDate, EndDate, MaxAttendees)
+                                        OUTPUT INSERTED.Id
+                                        VALUES ( @Name, @StartDate, @EndDate, @MaxAttendees)";
+                    cmd.Parameters.Add(new SqlParameter("@Name", trainingProgram.Name));
+                    cmd.Parameters.Add(new SqlParameter("@StartDate", trainingProgram.StartDate));
+                    cmd.Parameters.Add(new SqlParameter("@EndDate", trainingProgram.EndDate));
+                    cmd.Parameters.Add(new SqlParameter("@MaxAttendees", trainingProgram.MaxAttendees));
+
+                    int newId = (int)cmd.ExecuteScalar();
+                    trainingProgram.Id = newId;
+                    return CreatedAtRoute("GetTrainingProgram", new { id = newId }, trainingProgram);
+                }
+            }
+        }
     }
 }
-
-
-
-
-
-
-//        //Add a trainingProgram          url: "api/trainingPrograms"         method: POST             result: TrainingProgram Object   
-//        [HttpPost]
-//        public async Task<IActionResult> Post([FromBody] TrainingProgram trainingProgram)
-//        {
-//            using (SqlConnection conn = Connection)
-//            {
-//                conn.Open();
-//                using (SqlCommand cmd = conn.CreateCommand())
-//                {
-//                    cmd.CommandText = @"INSERT INTO TrainingProgram (Name, Budget)
-//                                        OUTPUT INSERTED.Id
-//                                        VALUES (@Name, @Budget)";
-//                    cmd.Parameters.Add(new SqlParameter("@Name", trainingProgram.Name));
-//                    cmd.Parameters.Add(new SqlParameter("@Budget", trainingProgram.Budget));
-
-//                    int newId = (int)cmd.ExecuteScalar();
-//                    trainingProgram.Id = newId;
-//                    return CreatedAtRoute("GetTrainingProgram", new { id = newId }, trainingProgram);
-//                }
-//            }
-//        }
 
 //        //Update a trainingProgram              url: "api/trainingPrograms/{id}"	           method: PUT     result: TrainingProgram Object    
 //        [HttpPut("{id}")]
