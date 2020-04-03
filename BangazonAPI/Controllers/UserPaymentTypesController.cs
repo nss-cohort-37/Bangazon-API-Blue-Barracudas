@@ -112,7 +112,8 @@ namespace BangazonAPI.Controllers
                     int id = (int)cmd.ExecuteScalar();
 
                     userPaymentType.Id = id;
-                    return CreatedAtRoute("GetUserPaymentType", new { id = id }, userPaymentType);
+                    //return CreatedAtRoute("GetUserPaymentTypes", new { id = id }, userPaymentType);
+                    return new StatusCodeResult(StatusCodes.Status204NoContent);
                 }
             }
         }
