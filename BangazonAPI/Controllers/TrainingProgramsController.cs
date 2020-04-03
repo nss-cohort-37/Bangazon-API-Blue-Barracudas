@@ -33,10 +33,10 @@ namespace BangazonAPI.Controllers
         }
 
         //Get upcoming training programs           url: api/trainingprograms            method: GET                       result: TrainingProgram Array
-        //the orignal GET will one show programs that are after today's date a query has been added to show all past (inactive) programs...  url: api/trainingprograms?inactive=true
+        //the orignal GET will one show programs that are after today's date
 
         [HttpGet]
-        public async Task<IActionResult> Get([FromQuery] string inactive)
+        public async Task<IActionResult> Get()
         {
             using (SqlConnection conn = Connection)
             {
@@ -45,10 +45,6 @@ namespace BangazonAPI.Controllers
                 {
                     cmd.CommandText = "SELECT Id, Name, StartDate, EndDate, MaxAttendees FROM TrainingProgram WHERE StartDate >= GETDATE()";
 
-                    if (inactive == "true")
-                    {
-                        cmd.CommandText = "SELECT Id, Name, StartDate, EndDate, MaxAttendees FROM TrainingProgram WHERE StartDate <= GETDATE()";
-                    }
                     SqlDataReader reader = cmd.ExecuteReader();
                     List<TrainingProgram> trainingPrograms = new List<TrainingProgram>();
 
@@ -232,104 +228,102 @@ namespace BangazonAPI.Controllers
             }
         }
 
-//        [HttpDelete("{id}")]
-//        public async Task<IActionResult> Delete([FromRoute] int id,
-//                                                [FromRoute] int employeeId,
-//                                                [FromRoute] int trainingProgramId)
-//        {
-//]
-//            //if the department includes employees this method  will run
-//            if ()
-//            {
-//                var trainingProgram = DeleteTrainingProgram(id);
-//                return Ok(trainingProgram);
-//            }
-//            //if the department does not it will still render with an empty employee list 
-//            else
-//            {
-//                var employeeTraining = DeleteEmployeeFromTrainingProgram(employeeId, trainingProgramId);
-//                return Ok(employeeTraining);
-//            }
+       
+        //Remove training program                       url: api/trainingPrograms/{id}	                        DELETE
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteTrainingProgram([FromRoute] int id)
+        {
+            DeleteEmployeesBeforeProgram(id);
+           
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"DELETE FROM TrainingProgram WHERE Id = @id";
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+                        }
+                        throw new Exception("No rows affected");
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                if (!TrainingProgramExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
+        //Remove employee from program                  url: api/trainingPrograms/{id}/employees/{employeeId}	DELETE
+        private void DeleteEmployeesBeforeProgram(int trainingProgramId)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"  DELETE FROM EmployeeTraining WHERE TrainingProgramId = @TrainingProgramId";
+                    cmd.Parameters.Add(new SqlParameter("@TrainingProgramId", trainingProgramId));
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                }
+            }
+
+        }
 
 
-//        }
 
-//        //Remove training program                       url: api/trainingPrograms/{id}	                        DELETE
-//        [HttpDelete("{id}")]
-//        private async Task<IActionResult> DeleteTrainingProgram([FromRoute] int id)
-//        {
-//            try
-//            {
-//                using (SqlConnection conn = Connection)
-//                {
-//                    conn.Open();
-//                    using (SqlCommand cmd = conn.CreateCommand())
-//                    {
-//                        cmd.CommandText = @"DELETE FROM TrainingProgram WHERE Id = @id";
-//                        cmd.Parameters.Add(new SqlParameter("@id", id));
+        [HttpDelete("{trainingProgramId}/employees/{employeeId}")]
 
-//                        int rowsAffected = cmd.ExecuteNonQuery();
-//                        if (rowsAffected > 0)
-//                        {
-//                            return new StatusCodeResult(StatusCodes.Status204NoContent);
-//                        }
-//                        throw new Exception("No rows affected");
-//                    }
-//                }
-//            }
-//            catch (Exception)
-//            {
-//                if (!TrainingProgramExists(id))
-//                {
-//                    return NotFound();
-//                }
-//                else
-//                {
-//                    throw;
-//                }
-//            }
-//        }
+        public async Task<IActionResult> DeleteEmployeeFromTrainingProgram([FromRoute] int employeeId,
+                                                                            [FromRoute] int trainingProgramId)
+        {
 
-//        //Remove employee from program                  url: api/trainingPrograms/{id}/employees/{employeeId}	DELETE
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"  DELETE FROM EmployeeTraining WHERE EmployeeId = @EmployeeId AND TrainingProgramId = @TrainingProgramId";
+                        cmd.Parameters.Add(new SqlParameter("@EmployeeId", employeeId));
+                        cmd.Parameters.Add(new SqlParameter("@TrainingProgramId", trainingProgramId));
 
-//        [HttpDelete("{trainingProgramId}")]
-//        [Route("{trainingProgramId}/employees/{employeeId}")]
-
-//        private async Task<IActionResult> DeleteEmployeeFromTrainingProgram([FromRoute] int employeeId,
-//                                                                    [FromRoute] int trainingProgramId)
-//        {
-//            try
-//            {
-//                using (SqlConnection conn = Connection)
-//                {
-//                    conn.Open();
-//                    using (SqlCommand cmd = conn.CreateCommand())
-//                    {
-//                        cmd.CommandText = @"  DELETE FROM EmployeeTraining WHERE EmployeeId = @EmployeeId AND TrainingProgramId = @TrainingProgramId";
-//                        cmd.Parameters.Add(new SqlParameter("@EmployeeId", employeeId));
-//                        cmd.Parameters.Add(new SqlParameter("@TrainingProgramId", trainingProgramId));
-
-//                        int rowsAffected = cmd.ExecuteNonQuery();
-//                        if (rowsAffected > 0)
-//                        {
-//                            return new StatusCodeResult(StatusCodes.Status204NoContent);
-//                        }
-//                        throw new Exception("No rows affected");
-//                    }
-//                }
-//            }
-//            catch (Exception)
-//            {
-//                if (!TrainingProgramExists(employeeId))
-//                {
-//                    return NotFound();
-//                }
-//                else
-//                {
-//                    throw;
-//                }
-//            }
-//        }
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+                        }
+                        throw new Exception("No rows affected");
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                if (!TrainingProgramExists(employeeId))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
 
         private bool TrainingProgramExists(int id)
 {
