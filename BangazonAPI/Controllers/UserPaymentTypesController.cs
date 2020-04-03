@@ -116,5 +116,70 @@ namespace BangazonAPI.Controllers
                 }
             }
         }
+
+
+        ////////----------PUT----------
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Put([FromRoute] int id, [FromBody] UserPaymentType userPaymentType)
+        {
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"UPDATE UserPaymentType
+                                     SET AcctNumber = @AcctNumber, Active = @Active, CustomerId = @CustomerId, PaymentTypeId = @PaymentTypeId
+                                     WHERE Id = @id";
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+                        cmd.Parameters.Add(new SqlParameter("@AcctNumber", userPaymentType.AcctNumber));
+                        cmd.Parameters.Add(new SqlParameter("@Active", userPaymentType.Active));
+                        cmd.Parameters.Add(new SqlParameter("@CustomerId", userPaymentType.CustomerId));
+                        cmd.Parameters.Add(new SqlParameter("@PaymentTypeId", userPaymentType.PaymentTypeId));
+                               int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+                        }
+                        throw new Exception("No rows affected");
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                if (!UserPaymentTypeExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
+
+        private bool UserPaymentTypeExists(int id)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT Id
+                        FROM UserPaymentType
+                        WHERE Id = @id";
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+                    return reader.Read();
+                }
+            }
+        }
+
+
     }
+
 }
