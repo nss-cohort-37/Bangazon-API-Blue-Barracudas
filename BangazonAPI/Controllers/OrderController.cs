@@ -135,10 +135,10 @@ namespace BangazonAPI.Controllers
                     
                 {
 
-                    cmd.CommandText = @"SELECT o.Id, o.CustomerId, o.UserPaymentTypeId, op.Id, op.OrderId, op.ProductId, p.Id, p.DateAdded, p.ProductTypeId, p.CustomerId, p.Price, p.Title, p.Description
+                    cmd.CommandText = @"SELECT o.Id, o.CustomerId, o.UserPaymentTypeId, ordProd.Id, ordProd.OrderId, ordProd.ProductId, p.Id, p.DateAdded, p.ProductTypeId, p.CustomerId, p.Price, p.Title, p.Description
                                         FROM [Order] o 
-                                        LEFT JOIN OrderProduct op ON o.Id = op.OrderId
-                                        LEFT JOIN Product p ON op.ProductId = p.Id
+                                        LEFT JOIN OrderProduct ordProd ON o.Id = ordProd.OrderId
+                                        LEFT JOIN Product p ON ordProd.ProductId = p.Id
                                         WHERE o.CustomerId = @customerId";
 
                     cmd.Parameters.Add(new SqlParameter("@customerId", customerId));
