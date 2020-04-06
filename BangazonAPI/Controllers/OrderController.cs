@@ -29,6 +29,7 @@ namespace BangazonAPI.Controllers
         public SqlConnection Connection
 
         {
+
             get
             {
                 return new SqlConnection(_config.GetConnectionString("DefaultConnection"));
@@ -48,10 +49,10 @@ namespace BangazonAPI.Controllers
             }
             else
             {
-           //     var AllOrders = getAllCustomerOrders(customerId);
-                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+
+                var AllOrders = getAllCustomerOrders(customerId);
+                return Ok(AllOrders);
             }
-            
 
         }
 
@@ -66,18 +67,17 @@ namespace BangazonAPI.Controllers
                 {
 
                     cmd.CommandText = @"SELECT o.Id AS OrderId, o.CustomerId, o.UserPaymentTypeId, ordProd.ProductId, p.Title, p.ProductTypeId, p.Price, p.DateAdded, p.Description, p.Id AS ProductId
-                    FROM OrderProduct ordProd
-                    LEFT JOIN [Order] o 
-                    ON o.Id = ordProd.OrderId
-                    LEFT JOIN  Product p 
-                    ON p.Id= ordProd.ProductId
-                    WHERE o.CustomerId = @customerId";
+                                        FROM [Order] o
+                                        LEFT JOIN OrderProduct ordProd
+                                        ON o.Id = ordProd.OrderId
+                                        LEFT JOIN  Product p 
+                                        ON ordProd.ProductId = p.Id
+                                        WHERE o.CustomerId = @customerId";
 
                     cmd.Parameters.Add(new SqlParameter("@customerId", customerId));
 
                     SqlDataReader reader = cmd.ExecuteReader();
                     
-
                     Order order = null;
 
                     while (reader.Read())
@@ -87,59 +87,141 @@ namespace BangazonAPI.Controllers
 
                             {
 
-                        if (order == null)
+                                if (order == null)
 
-                        {
-                            order = new Order()
-                            {
-                                Id = reader.GetInt32(reader.GetOrdinal("OrderId")),
-                                CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
+                                {
 
-                                products = new List<Product>()
+                                    order = new Order()
+                               
+                                    {
+                                        Id = reader.GetInt32(reader.GetOrdinal("OrderId")),
+                                        CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
+
+                                        products = new List<Product>()
                             };
 
                         }
 
                         order.products.Add(new Product()
                         
-                        {
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("ProductId")),
+                                DateAdded = reader.GetDateTime(reader.GetOrdinal("DateAdded")),
+                                ProductTypeId = reader.GetInt32(reader.GetOrdinal("ProductTypeId")),
+                                CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
+                                Price = reader.GetDecimal(reader.GetOrdinal("Price")),
+                                Title = reader.GetString(reader.GetOrdinal("Title")),
+                                Description = reader.GetString(reader.GetOrdinal("Description"))
 
-                            Id = reader.GetInt32(reader.GetOrdinal("ProductId")),
-                            DateAdded = reader.GetDateTime(reader.GetOrdinal("DateAdded")),
-                            ProductTypeId = reader.GetInt32(reader.GetOrdinal("ProductTypeId")),
-                            CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
-                            Price = reader.GetDecimal(reader.GetOrdinal("Price")),
-                            Title = reader.GetString(reader.GetOrdinal("Title")),
-                            Description = reader.GetString(reader.GetOrdinal("Description"))
-
-                        });
-                        
+                            });
                             }
-                            
-
-
                         }
-
 
                     reader.Close();
 
                     return order;
                     }
 
+                }
+           }
 
+    private List<Order> getAllCustomerOrders([FromQuery] int customerId) {
+            using (SqlConnection conn = Connection)
+
+            {
+                conn.Open();
+
+                using (SqlCommand cmd = conn.CreateCommand())
+                    
+                {
+
+                    cmd.CommandText = @"SELECT o.Id, o.CustomerId, o.UserPaymentTypeId, op.Id, op.OrderId, op.ProductId, p.Id, p.DateAdded, p.ProductTypeId, p.CustomerId, p.Price, p.Title, p.Description
+                                        FROM [Order] o 
+                                        LEFT JOIN OrderProduct op ON o.Id = op.OrderId
+                                        LEFT JOIN Product p ON op.ProductId = p.Id
+                                        WHERE o.CustomerId = @customerId";
+
+                    cmd.Parameters.Add(new SqlParameter("@customerId", customerId));
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+                    
+                    
+                        List<Order> orders = new List<Order>();
+
+                        while (reader.Read())
+
+                        {
+
+                            var existingOrder = orders.FirstOrDefault(order => order.Id == reader.GetInt32(reader.GetOrdinal("Id")));
+
+                            if (existingOrder == null)
+
+                            {
+
+                                Order order = new Order
+
+                                {
+
+                                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                    CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
+                                    products = new List<Product>()
+
+                                };
+
+                                if (!reader.IsDBNull(reader.GetOrdinal("UserPaymentTypeId")))
+
+                                {
+
+                                    order.UserPaymentTypeId = reader.GetInt32(reader.GetOrdinal("UserPaymentTypeId"));
+
+                                }
+
+
+                                order.products.Add(new Product()
+
+                                {
+
+                                    Id = reader.GetInt32(reader.GetOrdinal("ProductId")),
+                                    DateAdded = reader.GetDateTime(reader.GetOrdinal("DateAdded")),
+                                    ProductTypeId = reader.GetInt32(reader.GetOrdinal("ProductTypeId")),
+                                    CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
+                                    Price = reader.GetDecimal(reader.GetOrdinal("Price")),
+                                    Title = reader.GetString(reader.GetOrdinal("Title")),
+                                    Description = reader.GetString(reader.GetOrdinal("Description"))
+
+                                });
+
+                                orders.Add(order);
+
+                            }
+
+                            else
+
+                            {
+
+                                existingOrder.products.Add(new Product()
+
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("ProductId")),
+                                    DateAdded = reader.GetDateTime(reader.GetOrdinal("DateAdded")),
+                                    ProductTypeId = reader.GetInt32(reader.GetOrdinal("ProductTypeId")),
+                                    CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
+                                    Price = reader.GetDecimal(reader.GetOrdinal("Price")),
+                                    Title = reader.GetString(reader.GetOrdinal("Title")),
+                                    Description = reader.GetString(reader.GetOrdinal("Description"))
+
+                                });
+
+                            }
+
+                        }
+
+                        reader.Close();
+
+                        return (orders);
             }
-            
-            
-            }
-
-       //    private Order getAllCustomerOrders(int customerId) { 
-            
-            
-      //      }
-
- 
-
-
+    }
+}
 
         //Get order by ID
         [HttpGet("{id}", Name = "GetOrder")]
@@ -157,12 +239,12 @@ namespace BangazonAPI.Controllers
                 {
 
                     cmd.CommandText = @"SELECT o.Id AS OrderId, o.CustomerId, o.UserPaymentTypeId, ordProd.ProductId, p.Title, p.ProductTypeId, p.Price, p.DateAdded, p.Description, p.Id AS ProductId
-                    FROM OrderProduct ordProd
-                    LEFT JOIN [Order] o 
-                    ON o.Id = ordProd.OrderId
-                    LEFT JOIN  Product p 
-                    ON p.Id= ordProd.ProductId
-                    WHERE o.Id = @id";
+                                        FROM OrderProduct ordProd
+                                        LEFT JOIN [Order] o 
+                                        ON o.Id = ordProd.OrderId
+                                        LEFT JOIN  Product p 
+                                        ON p.Id= ordProd.ProductId
+                                        WHERE o.Id = @id";
 
                     cmd.Parameters.Add(new SqlParameter("@id", Id));
 
@@ -217,17 +299,12 @@ namespace BangazonAPI.Controllers
             }
         }
 
-      
-    
 
         //Add a product to shopping cart
-
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] CustomerProduct customerProduct)
 
         {
-
-
 
             using (SqlConnection conn = Connection)
 
@@ -240,14 +317,10 @@ namespace BangazonAPI.Controllers
                 {
 
                         cmd.CommandText = @"INSERT INTO [Order] (CustomerId, UserPaymentTypeId)
-
                                             OUTPUT INSERTED.Id
-
                                             VALUES ( @CustomerId, @UserPaymentTypeId)";
 
-
                         cmd.Parameters.Add(new SqlParameter("@CustomerId", customerProduct.CustomerId));
-
                         cmd.Parameters.Add(new SqlParameter("@UserPaymentTypeId", DBNull.Value));
 
                         int orderId = (int)cmd.ExecuteScalar();
@@ -256,20 +329,15 @@ namespace BangazonAPI.Controllers
 
                         {
                             Id = orderId, 
-
                             CustomerId= customerProduct.CustomerId
 
                         };
 
-                    cmd.CommandText = @"INSERT INTO OrderProduct ( OrderId, ProductId)
-
-                                            OUTPUT INSERTED.Id
-
-                                            VALUES ( @OrderId, @ProductId)";
-
+                        cmd.CommandText = @"INSERT INTO OrderProduct ( OrderId, ProductId)
+                                        OUTPUT INSERTED.Id
+                                        VALUES ( @OrderId, @ProductId)";
 
                 cmd.Parameters.Add(new SqlParameter("@OrderId", cart.Id ));
-
                 cmd.Parameters.Add(new SqlParameter("@ProductId", customerProduct.ProductId));
 
                 int customersId = (int)cmd.ExecuteScalar();
@@ -278,15 +346,12 @@ namespace BangazonAPI.Controllers
 
                 return CreatedAtRoute(new { id = cart.Id }, new Order { CustomerId = customerProduct.CustomerId, Id = cart.Id });
                     
-
             }
         }
     }
 
-
         //Purchase an order
         [HttpPut("{id}")]
-
         public async Task<IActionResult> Put([FromRoute] int id, [FromBody] Order order)
 
         {
@@ -301,10 +366,10 @@ namespace BangazonAPI.Controllers
 
                     {
 
-                        cmd.CommandText = "UPDATE [Order] SET UserPaymentTypeId = @userPaymentTypeId WHERE Id = @id";
+                        cmd.CommandText = @"UPDATE [Order] SET UserPaymentTypeId = @userPaymentTypeId
+                                            WHERE Id = @id";
 
                         cmd.Parameters.Add(new SqlParameter("@userPaymentTypeId", order.UserPaymentTypeId));
-
                         cmd.Parameters.Add(new SqlParameter("@id", id));
 
                         int rowsAffected = cmd.ExecuteNonQuery();
@@ -314,6 +379,7 @@ namespace BangazonAPI.Controllers
                         {
                             return new StatusCodeResult(StatusCodes.Status204NoContent);
                         }
+
                         throw new Exception("No rows affected");
                     }
                 }
@@ -352,7 +418,8 @@ namespace BangazonAPI.Controllers
 
                     {
                         cmd.CommandText = @"DELETE FROM OrderProduct 
-                                            WHERE Id = @id AND ProductId = @productId";
+                                            WHERE Id = @id 
+                                            AND ProductId = @productId";
 
                         cmd.Parameters.Add(new SqlParameter("@id", id));
                         cmd.Parameters.Add(new SqlParameter("@productId", productId));
@@ -366,7 +433,6 @@ namespace BangazonAPI.Controllers
                         }
 
                         throw new Exception("No rows affected");
-
                     }
                 }
             }
@@ -395,9 +461,9 @@ namespace BangazonAPI.Controllers
 
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = @"Select Id, CustomerId, UserPaymentTypeId  
-                     FROM Order 
-                     Where Id = @id";
+                    cmd.CommandText = @"SELECT Id, CustomerId, UserPaymentTypeId  
+                                        FROM Order 
+                                        WHERE Id = @id";
 
                     cmd.Parameters.Add(new SqlParameter("@id", id));
                     SqlDataReader reader = cmd.ExecuteReader();
