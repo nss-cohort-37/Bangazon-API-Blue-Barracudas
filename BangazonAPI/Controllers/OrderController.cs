@@ -37,65 +37,109 @@ namespace BangazonAPI.Controllers
 
         //Get by customer
         [HttpGet]
-        public async Task<IActionResult> GetOrdersByCustomerId([FromQuery] int customerId)
+        public async Task<IActionResult> GetOrdersByCustomerId([FromQuery] int customerId, [FromQuery] bool cart)
 
         {
+
+            if (cart == true)
+            {
+                var CustomerCart = getCustomerCart(customerId);
+                return Ok(CustomerCart);
+            }
+            else
+            {
+           //     var AllOrders = getAllCustomerOrders(customerId);
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+            }
+            
+
+        }
+
+           private Order getCustomerCart(int customerId) {
             using (SqlConnection conn = Connection)
 
             {
                 conn.Open();
 
                 using (SqlCommand cmd = conn.CreateCommand())
-
+                    
                 {
-                    cmd.CommandText =
 
-                     @"Select o.Id, o.CustomerId, o.UserPaymentTypeId
-                     FROM [Order] o
-                     Where 1 = 1";
+                    cmd.CommandText = @"SELECT o.Id AS OrderId, o.CustomerId, o.UserPaymentTypeId, ordProd.ProductId, p.Title, p.ProductTypeId, p.Price, p.DateAdded, p.Description, p.Id AS ProductId
+                    FROM OrderProduct ordProd
+                    LEFT JOIN [Order] o 
+                    ON o.Id = ordProd.OrderId
+                    LEFT JOIN  Product p 
+                    ON p.Id= ordProd.ProductId
+                    WHERE o.CustomerId = @customerId";
 
-                    if (customerId != null)
-
-                    {
-                        cmd.CommandText += " AND o.CustomerId = @customerId";
-
-                        cmd.Parameters.Add(new SqlParameter("@customerId", customerId));
-                    }
+                    cmd.Parameters.Add(new SqlParameter("@customerId", customerId));
 
                     SqlDataReader reader = cmd.ExecuteReader();
+                    
 
-                    List<Order> orders = new List<Order>();
+                    Order order = null;
 
                     while (reader.Read())
 
                     {
-
-              //          if (reader.GetInt32(reader.GetOrdinal("UserPaymentTypeId")) != 0)
-
-              
-                            Order order = new Order
+                            if (reader.IsDBNull(reader.GetOrdinal("UserPaymentTypeId")))
 
                             {
 
-                                Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                                CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
-                                UserPaymentTypeId = reader.GetInt32(reader.GetOrdinal("UserPaymentTypeId")),
+                        if (order == null)
 
+                        {
+                            order = new Order()
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("OrderId")),
+                                CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
+
+                                products = new List<Product>()
                             };
 
-                            orders.Add(order);
-               
+                        }
 
-                    }
+                        order.products.Add(new Product()
+                        
+                        {
+
+                            Id = reader.GetInt32(reader.GetOrdinal("ProductId")),
+                            DateAdded = reader.GetDateTime(reader.GetOrdinal("DateAdded")),
+                            ProductTypeId = reader.GetInt32(reader.GetOrdinal("ProductTypeId")),
+                            CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
+                            Price = reader.GetDecimal(reader.GetOrdinal("Price")),
+                            Title = reader.GetString(reader.GetOrdinal("Title")),
+                            Description = reader.GetString(reader.GetOrdinal("Description"))
+
+                        });
+                        
+                            }
+                            
+
+
+                        }
+
 
                     reader.Close();
 
-                    return Ok(orders);
+                    return order;
+                    }
 
-                }
+
+            }
+            
+            
             }
 
-        }
+       //    private Order getAllCustomerOrders(int customerId) { 
+            
+            
+      //      }
+
+ 
+
+
 
         //Get order by ID
         [HttpGet("{id}", Name = "GetOrder")]
@@ -173,17 +217,17 @@ namespace BangazonAPI.Controllers
             }
         }
 
-        //Get customer's shopping cart
-
-
-
-
+      
+    
 
         //Add a product to shopping cart
+
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] Customer customer)
+        public async Task<IActionResult> Post([FromBody] CustomerProduct customerProduct)
 
         {
+
+
 
             using (SqlConnection conn = Connection)
 
@@ -195,29 +239,49 @@ namespace BangazonAPI.Controllers
 
                 {
 
-                    cmd.CommandText = @"INSERT INTO Order (FirstName, LastName, CreatedDate, Active, Address, City, State, Email, Phone)
-                                        OUTPUT INSERTED.Id
-                                        VALUES (@FirstName, @LastName, @CreatedDate, 
-                                        @Active, @Address, @Email, @City, @State, @Phone)";
+                        cmd.CommandText = @"INSERT INTO [Order] (CustomerId, UserPaymentTypeId)
 
-                    cmd.Parameters.Add(new SqlParameter("@FirstName", customer.FirstName));
-                    cmd.Parameters.Add(new SqlParameter("@LastName", customer.LastName));
-                    cmd.Parameters.Add(new SqlParameter("@CreatedDate", DateTime.Now));
-                    cmd.Parameters.Add(new SqlParameter("@Active", customer.Active));
-                    cmd.Parameters.Add(new SqlParameter("@Email", customer.Email));
-                    cmd.Parameters.Add(new SqlParameter("@Address", customer.Address));
-                    cmd.Parameters.Add(new SqlParameter("@City", customer.City));
-                    cmd.Parameters.Add(new SqlParameter("@State", customer.State));
-                    cmd.Parameters.Add(new SqlParameter("@Phone", customer.Phone));
+                                            OUTPUT INSERTED.Id
 
-                    int newId = (int)cmd.ExecuteScalar();
+                                            VALUES ( @CustomerId, @UserPaymentTypeId)";
 
-                    customer.Id = newId;
 
-                    return CreatedAtRoute("GetCustomer", new { id = newId }, customer);
-                }
+                        cmd.Parameters.Add(new SqlParameter("@CustomerId", customerProduct.CustomerId));
+
+                        cmd.Parameters.Add(new SqlParameter("@UserPaymentTypeId", DBNull.Value));
+
+                        int orderId = (int)cmd.ExecuteScalar();
+
+                        var cart = new Order()
+
+                        {
+                            Id = orderId, 
+
+                            CustomerId= customerProduct.CustomerId
+
+                        };
+
+                    cmd.CommandText = @"INSERT INTO OrderProduct ( OrderId, ProductId)
+
+                                            OUTPUT INSERTED.Id
+
+                                            VALUES ( @OrderId, @ProductId)";
+
+
+                cmd.Parameters.Add(new SqlParameter("@OrderId", cart.Id ));
+
+                cmd.Parameters.Add(new SqlParameter("@ProductId", customerProduct.ProductId));
+
+                int customersId = (int)cmd.ExecuteScalar();
+
+                customerProduct.Id = customersId;
+
+                return CreatedAtRoute(new { id = cart.Id }, new Order { CustomerId = customerProduct.CustomerId, Id = cart.Id });
+                    
+
             }
         }
+    }
 
 
         //Purchase an order
