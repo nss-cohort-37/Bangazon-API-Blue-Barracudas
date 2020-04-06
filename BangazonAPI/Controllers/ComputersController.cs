@@ -365,7 +365,9 @@ namespace BangazonAPI.Controllers
                     return NotFound();
                 }
 
+
                 //if the computer is in use you will get a 403 status instead of breaking the program
+
                 if (ComputerInUse(id))
                 {
                     return new StatusCodeResult(StatusCodes.Status403Forbidden);
