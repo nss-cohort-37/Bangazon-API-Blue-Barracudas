@@ -15,11 +15,11 @@ namespace BangazonAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProductTypeController : ControllerBase
+    public class ProductTypesController : ControllerBase
     {
         private readonly IConfiguration _config;
 
-        public ProductTypeController(IConfiguration config)
+        public ProductTypesController(IConfiguration config)
         {
             _config = config;
         }
