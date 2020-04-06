@@ -12,11 +12,11 @@ namespace BangazonAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class EmployeesController : ControllerBase
+    public class EmployeeController : ControllerBase
     {
         private readonly IConfiguration _config;
 
-        public EmployeesController(IConfiguration config)
+        public EmployeeController(IConfiguration config)
         {
             _config = config;
         }
