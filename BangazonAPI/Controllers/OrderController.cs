@@ -173,6 +173,12 @@ namespace BangazonAPI.Controllers
             }
         }
 
+        //Get customer's shopping cart
+
+
+
+
+
         //Add a product to shopping cart
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] Customer customer)
