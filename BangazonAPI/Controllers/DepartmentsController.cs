@@ -184,8 +184,12 @@ namespace BangazonAPI.Controllers
 
                     int newId = (int)cmd.ExecuteScalar();
                     department.Id = newId;
-                    return CreatedAtRoute("GetDepartment", new { id = newId }, department);
+                    return new StatusCodeResult(StatusCodes.Status204NoContent);
                 }
+
+
+
+
             }
         }
 
