@@ -262,11 +262,13 @@ namespace BangazonAPI.Controllers
 
                         {
                             order = new Order
+
                             {
+
                                 Id = reader.GetInt32(reader.GetOrdinal("OrderId")),
                                 CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
 
-                                products = new List<Product>()
+
                             };
 
                             if (!reader.IsDBNull(reader.GetOrdinal("UserPaymentTypeId")))
@@ -277,19 +279,6 @@ namespace BangazonAPI.Controllers
 
                         }
 
-                        order.products.Add(new Product()
-
-                        {
-
-                            Id = reader.GetInt32(reader.GetOrdinal("ProductId")),
-                            DateAdded = reader.GetDateTime(reader.GetOrdinal("DateAdded")),
-                            ProductTypeId = reader.GetInt32(reader.GetOrdinal("ProductTypeId")),
-                            CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
-                            Price = reader.GetDecimal(reader.GetOrdinal("Price")),
-                            Title = reader.GetString(reader.GetOrdinal("Title")),
-                            Description = reader.GetString(reader.GetOrdinal("Description"))
-
-                        });
                     }
 
                     reader.Close();
@@ -333,16 +322,16 @@ namespace BangazonAPI.Controllers
 
                         };
 
-                        cmd.CommandText = @"INSERT INTO OrderProduct ( OrderId, ProductId)
-                                        OUTPUT INSERTED.Id
-                                        VALUES ( @OrderId, @ProductId)";
+                        cmd.CommandText = @"INSERT INTO OrderProduct (OrderId, ProductId)
+                                            OUTPUT INSERTED.Id
+                                            VALUES ( @OrderId, @ProductId)";
 
-                cmd.Parameters.Add(new SqlParameter("@OrderId", cart.Id ));
-                cmd.Parameters.Add(new SqlParameter("@ProductId", customerProduct.ProductId));
+                        cmd.Parameters.Add(new SqlParameter("@OrderId", cart.Id ));
+                        cmd.Parameters.Add(new SqlParameter("@ProductId", customerProduct.ProductId));
 
-                int customersId = (int)cmd.ExecuteScalar();
+                        int customersId = (int)cmd.ExecuteScalar();
 
-                customerProduct.Id = customersId;
+                        customerProduct.Id = customersId;
 
                 return CreatedAtRoute(new { id = cart.Id }, new Order { CustomerId = customerProduct.CustomerId, Id = cart.Id });
                     
@@ -403,7 +392,7 @@ namespace BangazonAPI.Controllers
 
         //Remove product from cart
         [HttpDelete("{id}")]
-        [Route("{orderId}/products/{productId}")]
+        [Route("{orderId}/products{productId}")]
         public async Task<IActionResult> Delete([FromRoute] int id, [FromRoute] int productId)
 
         {
@@ -420,6 +409,7 @@ namespace BangazonAPI.Controllers
                         cmd.CommandText = @"DELETE FROM OrderProduct 
                                             WHERE Id = @id 
                                             AND ProductId = @productId";
+
 
                         cmd.Parameters.Add(new SqlParameter("@id", id));
                         cmd.Parameters.Add(new SqlParameter("@productId", productId));
@@ -462,7 +452,7 @@ namespace BangazonAPI.Controllers
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"SELECT Id, CustomerId, UserPaymentTypeId  
-                                        FROM Order 
+                                        FROM [Order] 
                                         WHERE Id = @id";
 
                     cmd.Parameters.Add(new SqlParameter("@id", id));
