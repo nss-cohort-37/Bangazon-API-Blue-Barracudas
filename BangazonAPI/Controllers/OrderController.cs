@@ -15,12 +15,12 @@ namespace BangazonAPI.Controllers
 
     [ApiController]
 
-    public class OrderController : ControllerBase
+    public class OrdersController : ControllerBase
 
     {
         private readonly IConfiguration _config;
 
-        public OrderController(IConfiguration config)
+        public OrdersController(IConfiguration config)
 
         {
             _config = config;
@@ -393,7 +393,7 @@ namespace BangazonAPI.Controllers
         //Remove product from cart
         [HttpDelete("{id}")]
         [Route("{orderId}/products{productId}")]
-        public async Task<IActionResult> Delete([FromRoute] int id, [FromRoute] int productId)
+        public async Task<IActionResult> Delete([FromRoute] int orderId, [FromRoute] int productId)
 
         {
             try
@@ -407,11 +407,11 @@ namespace BangazonAPI.Controllers
 
                     {
                         cmd.CommandText = @"DELETE FROM OrderProduct 
-                                            WHERE Id = @id 
+                                            WHERE OrderId = @id 
                                             AND ProductId = @productId";
 
 
-                        cmd.Parameters.Add(new SqlParameter("@id", id));
+                        cmd.Parameters.Add(new SqlParameter("@id", orderId));
                         cmd.Parameters.Add(new SqlParameter("@productId", productId));
 
                         int rowsAffected = cmd.ExecuteNonQuery();
@@ -430,7 +430,7 @@ namespace BangazonAPI.Controllers
             catch (Exception)
 
             {
-                if (!OrderExists(id))
+                if (!OrderExists(orderId))
                 {
                     return NotFound();
                 }
